@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#030806">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<title>SOFWAH FIRAX</title>
+<link rel="preconnect" href="https://script.google.com">
+<link rel="preconnect" href="https://script.googleusercontent.com">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icons/icon-32.png?v=3" sizes="32x32">
+<link rel="apple-touch-icon" href="/icons/icon-180.png?v=3">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="FIRAX">
+<style>
+html,body{margin:0;height:100%;background:#030806;color:#ecf7f0;font-family:Poppins,Arial,system-ui,sans-serif;overflow:hidden}
+body{background:radial-gradient(800px 600px at 0 0,rgba(47,224,122,.14),transparent 60%),radial-gradient(800px 600px at 100% 0,rgba(22,163,74,.08),transparent 60%),#030806}
+iframe{position:fixed;inset:0;width:100%;height:100%;border:0;opacity:0;transition:opacity .4s}
+iframe.on{opacity:1}
+.load{position:fixed;inset:0;display:grid;place-items:center;text-align:center}
+.load img{width:72px;height:72px;border-radius:22px;box-shadow:0 14px 34px rgba(47,224,122,.3);animation:p 1.6s ease-in-out infinite}
+.load b{display:block;margin-top:16px;letter-spacing:.4em;font-size:18px;padding-left:.4em}
+.load small{display:block;color:#2fe07a;letter-spacing:.12em;font-size:10.5px;margin-top:4px;font-weight:600}
+.load p{color:#7f9888;font-size:12px;margin-top:22px;max-width:300px}
+.load a{color:#2fe07a}
+@keyframes p{50%{transform:scale(1.06)}}
+</style>
+</head>
+<body>
+<div class="load" id="ld"><div><img src="/icons/icon-192.png?v=3" alt=""><b>FIRAX</b><small>FINANCIAL CLARITY · INTELLIGENT DECISIONS · PROFITABLE GROWTH</small><p id="msg">Loading…</p></div></div>
+<iframe id="app" title="SOFWAH FIRAX" allow="clipboard-write; fullscreen" allowfullscreen referrerpolicy="no-referrer"></iframe>
+<script>
+(function () {
+  var EXEC = '__EXEC_URL__';
+  var f = document.getElementById('app'), ld = document.getElementById('ld');
+  function boot() {
+    var pg = (location.search.match(/[?&]page=([a-z]{1,12})/) || [])[1] || '';
+    f.src = EXEC + (pg ? '?page=' + pg : '');
+    f.onload = function () { f.className = 'on'; setTimeout(function () { ld.style.display = 'none'; }, 400); };
+    setTimeout(function () { if (f.className !== 'on') document.getElementById('msg').innerHTML = 'Slow connection. <a href="' + f.src + '" rel="noopener">Open directly</a> or reload.'; }, 15000);
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(function () {});
+  }
+  // Enforce HTTPS: on plain http, confirm the HTTPS certificate works, then move to https (never load the app over http).
+  if (location.protocol === 'http:' && /(^|\.)sofwah\.my$/.test(location.hostname)) {
+    var u = 'https://' + location.host + location.pathname + location.search + location.hash;
+    var settled = false, done = function (ok) { if (settled) return; settled = true; if (ok) location.replace(u); else boot(); };
+    fetch('https://' + location.hostname + '/manifest.webmanifest?probe=' + Date.now(), { mode: 'no-cors', cache: 'no-store' })
+      .then(function () { done(true); }, function () { done(false); });
+    setTimeout(function () { done(false); }, 3500);
+  } else boot();
+})();
+</script>
+</body>
+</html>
