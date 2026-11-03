@@ -298,6 +298,7 @@
     home: { t: 'Utama', i: 'home', sub: 'Pusat kawalan kewangan · gambaran 30 saat' },
     routine: { t: 'Rutin Kewangan', i: 'routine', sub: 'Apa perlu dibuat hari ini, minggu ini dan bulan ini (SOP standard)' },
     pay: { t: 'Bayaran', i: 'bank', sub: 'Run bayaran Ahad & Rabu (supplier) · Selasa (HR) · hanya senarai diluluskan' },
+    soa: { t: 'Penyata Supplier', i: 'bill', sub: 'Statement of Account · baki, invois, bayaran, umur hutang & rundingan 2027' },
     actions: { t: 'Tindakan', i: 'actions', sub: 'Action Engine · setiap 🔴 ada PIC, SLA dan cara selesaikan' },
     cash: { t: 'Tunai & Ramalan', i: 'cash', sub: 'Baki bank, aliran tunai, runway dan ramalan' },
     sales: { t: 'Jualan & Rekon', i: 'sales', sub: 'POS lawan bank setiap hari, payout delivery dan semakan harga' },
@@ -309,7 +310,7 @@
     guide: { t: 'Panduan & Kamus', i: 'guide', sub: 'Maksud setiap istilah, julat sihat industri dan cara guna FIRAX' },
     settings: { t: 'Tetapan', i: 'settings', sub: 'Pengguna, ambang, PIC dan sumber data', ceo: true }
   };
-  var NAVG = [['', ['home', 'routine', 'pay', 'actions']], ['Modul', ['cash', 'sales', 'profit', 'books', 'planning', 'control']], ['Sistem', ['live', 'guide', 'settings']]];
+  var NAVG = [['', ['home', 'routine', 'pay', 'soa', 'actions']], ['Modul', ['cash', 'sales', 'profit', 'books', 'planning', 'control']], ['Sistem', ['live', 'guide', 'settings']]];
   function navHtml() {
     var red = S.home && S.home.actions && S.home.actions.counts ? num(S.home.actions.counts.r) : 0, rt = S.rt && S.rt.prog ? S.rt.prog.H : null;
     return NAVG.map(function (g) {
@@ -342,7 +343,7 @@
   function go(p) {
     if (!PG[p]) p = 'home'; S.page = p; sset('firax.p', p); closeModal();
     layout(); window.scrollTo(0, 0);
-    var R = { home: renderHome, actions: renderActions, settings: renderSettings, routine: renderRoutine, guide: renderGuide, pay: renderPay }[p] || renderModule;
+    var R = { home: renderHome, actions: renderActions, settings: renderSettings, routine: renderRoutine, guide: renderGuide, pay: renderPay, soa: renderSoa }[p] || renderModule;
     R();
   }
   A.nav = function (el) { go(el.getAttribute('data-p')); };
@@ -713,7 +714,7 @@
       '<div class="glass sumtile"><div><b style="color:var(--y)">' + r.wait.n + '</b><small>Belum diluluskan · ' + rmf(r.wait.amt) + ' (tidak dibayar)</small></div></div></section>';
     var steps = [['1', 'Buka folder bayaran', 'Semua invois run ini dalam satu folder Drive.'], ['2', 'Bayar di M2U Biz', 'Ikut jumlah dalam setiap kad. Satu supplier = satu transaksi.'], ['3', 'Tanda dibayar', 'Muat naik slip dan isi rujukan M2U.'], ['4', 'Sistem buat selebihnya', 'Slip dinamakan, difailkan ke folder supplier' + (r.autoMail ? ' dan emel balasan dihantar ke supplier' : '') + '.']];
     var how = '<section class="glass pad"><div class="sec-h"><div><div class="kicker">' + esc(r.day) + ' · ' + esc(ymdS(r.ymd)) + (r.hr ? ' · Khusus HR' : ' · Supplier') + '</div><h3 style="margin-top:6px">Hanya item dalam senarai ini dibayar</h3></div>' +
-      (r.canEdit ? '<div class="row-btn" style="margin:0"><button class="btn" data-act="payFile">' + ic(I.refresh) + 'Fail & namakan invois</button><button class="btn pri" data-act="payFolder">' + ic(I.books) + 'Buka folder bayaran</button></div>' : '') + '</div>' +
+      (r.canEdit ? '<div class="row-btn" style="margin:0"><button class="btn" data-act="payXls">⬇ Excel</button><button class="btn" data-act="payFile">' + ic(I.refresh) + 'Fail & namakan invois</button><button class="btn pri" data-act="payFolder">' + ic(I.books) + 'Buka folder bayaran</button></div>' : '') + '</div>' +
       '<div class="steps4">' + steps.map(function (x) { return '<div><span>' + x[0] + '</span><b>' + esc(x[1]) + '</b><p>' + esc(x[2]) + '</p></div>'; }).join('') + '</div></section>';
     var body = '';
     if (!r.groups.length && !(r.hr && (r.sambilan.length || r.bday.length))) body = '<section class="glass pad"><div class="empty">✅ Tiada bayaran dijadualkan untuk ' + esc(r.day) + ' ini.' + (r.wait.n ? '<br>' + r.wait.n + ' invois masih menunggu kelulusan — lihat di bawah.' : '') + '</div></section>';
@@ -809,6 +810,117 @@
     };
     if (!f) return send('');
     var rd = new FileReader(); rd.onload = function () { send(String(rd.result).split(',')[1]); }; rd.onerror = function () { el.disabled = false; toast('Gagal membaca fail', true); }; rd.readAsDataURL(f);
+  };
+
+  /* ======================= Muat turun Excel (SheetJS, dimuat bila perlu) ======================= */
+  function needXlsx() {
+    if (window.XLSX) return Promise.resolve(window.XLSX);
+    return new Promise(function (ok, bad) { var s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload = function () { ok(window.XLSX); }; s.onerror = function () { bad({ error: 'Gagal memuat modul Excel. Semak internet dan cuba lagi.' }); }; document.head.appendChild(s); });
+  }
+  /** sheets = [{ n: 'Nama tab', rows: [[...], ...], w: [lebar lajur] }] */
+  function dlXlsx(file, sheets) {
+    toast('Menyediakan fail Excel…');
+    return needXlsx().then(function (X) {
+      var wb = X.utils.book_new();
+      sheets.forEach(function (s) { var ws = X.utils.aoa_to_sheet(s.rows); if (s.w) ws['!cols'] = s.w.map(function (w) { return { wch: w }; }); X.utils.book_append_sheet(wb, ws, s.n.slice(0, 31)); });
+      X.writeFile(wb, file.replace(/[\\\/:*?"<>|]+/g, ' ') + '.xlsx');
+      toast('Fail dimuat turun: ' + file + '.xlsx');
+    }).catch(function (e) { toast((e && e.error) || 'Muat turun gagal', true); });
+  }
+  function r2(n) { return Math.round((n || 0) * 100) / 100; }
+
+  /* ======================= Penyata Akaun Supplier (SOA) ======================= */
+  var SOAP = [['m1', 'Bulan ini'], ['m3', '3 bulan'], ['m6', '6 bulan'], ['ytd', 'Tahun ini'], ['y12', '12 bulan']];
+  function soaRange(p, t) {
+    var d = new Date(t + 'T00:00:00'), f = function (x) { return x.getFullYear() + '-' + ('0' + (x.getMonth() + 1)).slice(-2) + '-' + ('0' + x.getDate()).slice(-2); };
+    if (p === 'm1') return [t.slice(0, 8) + '01', t];
+    if (p === 'ytd') return [t.slice(0, 4) + '-01-01', t];
+    var n = { m3: 3, m6: 6, y12: 12 }[p] || 3, s = new Date(d.getFullYear(), d.getMonth() - n + 1, 1); return [f(s), t];
+  }
+  function renderSoa() {
+    var o = S.soaQ || {};
+    rpc('fxSoa', [S.token, o.sup || '', o.from || '', o.to || '']).then(function (r) { S.soa = r; S.soaQ = { sup: o.sup || '', from: r.from, to: r.to, p: o.p || (o.from ? '' : 'ytd') }; soaView(r); }).catch(fail);
+  }
+  function dmy(y) { return y ? y.slice(8, 10) + '/' + y.slice(5, 7) + '/' + y.slice(0, 4) : '—'; }
+  function soaView(r) {
+    var q = S.soaQ, f = (S.soaF || '').toLowerCase();
+    var list = r.vendors.filter(function (v) { return !f || (v.key + ' ' + v.short + ' ' + v.kod).toLowerCase().indexOf(f) >= 0; });
+    var totOut = r.vendors.reduce(function (a, v) { return a + v.out; }, 0), totLate = r.vendors.reduce(function (a, v) { return a + v.late; }, 0);
+    var side = '<aside class="glass pad soa-list"><div class="kicker">Senarai vendor · ' + r.vendors.length + '</div>' +
+      '<div class="soa-sum"><div><small>Jumlah terhutang</small><b>' + rmf(totOut) + '</b></div><div><small>Lewat tempoh</small><b style="color:#ff8b8b">' + rmf(totLate) + '</b></div></div>' +
+      '<input class="inp" id="soaq" placeholder="Cari vendor…" value="' + esc(S.soaF || '') + '">' +
+      '<select class="inp soa-sel" data-act="none" id="soasel"><option value="">— Pilih vendor —</option>' + r.vendors.map(function (v) { return '<option value="' + esc(v.key) + '"' + (v.key === q.sup ? ' selected' : '') + '>' + esc(v.short) + (v.out ? ' · ' + rmf(v.out) : '') + '</option>'; }).join('') + '</select>' +
+      '<div class="soa-vs">' + list.map(function (v) {
+        return '<button class="soa-v' + (v.key === q.sup ? ' on' : '') + '" data-act="soaPick" data-k="' + esc(v.key) + '"><span><b>' + esc(v.short) + '</b><small>' + esc(v.kod || 'Tiada kod') + ' · ' + v.n + ' invois</small></span><em class="' + (v.late ? 'r' : v.out ? 'y' : '') + '">' + (v.out ? rmf(v.out) : '✓') + '</em></button>';
+      }).join('') + (list.length ? '' : '<div class="empty">Tiada padanan</div>') + '</div></aside>';
+    var main = r.soa ? soaBody(r) : '<section class="glass pad"><div class="empty" style="padding:60px 20px"><div style="font-size:42px">📒</div><h3>Pilih vendor di sebelah kiri</h3><p class="note">Penyata akaun lengkap: baki awal, invois, bayaran, baki berjalan, umur hutang, prestasi bayaran, belian ikut cawangan & item, serta petunjuk rundingan 2027.</p></div></section>';
+    view('<div class="soa">' + side + '<div class="stack">' + periodBar(q) + main + '</div></div>');
+    var inp = $('#soaq'); if (inp) inp.oninput = function () { S.soaF = this.value; var pos = this.selectionStart; soaView(S.soa); var n = $('#soaq'); n.focus(); n.setSelectionRange(pos, pos); };
+    var sel = $('#soasel'); if (sel) sel.onchange = function () { if (this.value) { S.soaQ.sup = this.value; view('<div class="skel" style="height:300px"></div>'); renderSoa(); } };
+  }
+  function periodBar(q) {
+    return '<section class="glass pad soa-per"><div class="chips">' + SOAP.map(function (p) { return '<button class="pill' + (q.p === p[0] ? ' on' : '') + '" data-act="soaP" data-p="' + p[0] + '">' + p[1] + '</button>'; }).join('') + '</div>' +
+      '<div class="soa-dates"><label>Dari <input type="date" class="inp" id="sf" value="' + esc(q.from) + '"></label><label>Hingga <input type="date" class="inp" id="st" value="' + esc(q.to) + '"></label><button class="btn sm" data-act="soaGo">Papar</button></div>' +
+      (S.soa && S.soa.soa ? '<div class="soa-dl"><button class="btn sm pri" data-act="soaXls">⬇ Excel</button><button class="btn sm" data-act="print">⬇ PDF / Cetak</button></div>' : '') + '</section>';
+  }
+  function soaBody(r) {
+    var s = r.soa, v = s.sup, agTot = s.aging.reduce(function (a, x) { return a + x.v; }, 0), lateAmt = agTot - s.aging[0].v;
+    var head = '<section class="glass pad soa-head"><div><div class="kicker">Penyata Akaun Supplier · Statement of Account</div><h2>' + esc(v.key) + '</h2>' +
+      '<div class="meta">' + (v.kod ? chip(v.kod) : '') + chip('Terma ' + (v.terma || '—') + ' hari') + chip('Bayar ' + (v.hari || '—')) + (v.email ? '<span class="chip">✉ ' + esc(v.email) + '</span>' : '<span class="chip w">' + esc(v.chan || 'Tiada emel') + '</span>') + (v.folder ? '<a class="chip" href="' + esc(v.folder) + '" target="_blank" rel="noopener">📁 Folder invois & slip</a>' : '') + '</div>' +
+      '<div class="note">Tempoh ' + dmy(s.from) + ' – ' + dmy(s.to) + ' · disediakan ' + dmy(r.today) + ' oleh ' + esc(S.me.name) + ' · Sofwah Arabiata (M) Sdn Bhd</div></div>' +
+      '<div class="soa-bal"><small>Baki akhir (terhutang)</small><b>' + rmf(s.close) + '</b><span>' + (lateAmt ? '<i class="r">' + rmf(lateAmt) + ' lewat</i>' : '<i class="g">Tiada tunggakan lewat</i>') + '</span></div></section>';
+    var tiles = '<section class="cards soa-k">' + [
+      ['Belian tempoh', rmf(s.spend), s.invN + ' invois · purata ' + rmf(s.avgInv)],
+      ['Bahagian AP', s.share === null ? '—' : s.share.toFixed(1) + '%', s.rank ? 'Ranking #' + s.rank + ' / ' + s.ranks + ' supplier' : ''],
+      ['Unjuran setahun', rmf(s.annual), 'Asas rundingan 2027'],
+      ['Hari bayar purata (DPO)', s.dpo === null ? '—' : Math.round(s.dpo) + ' hari', s.paidN + ' invois dibayar'],
+      ['Bayar tepat masa', s.ontime === null ? '—' : Math.round(s.ontime) + '%', 'Sasaran ≥ 95%']
+    ].map(function (k) { return '<div class="glass card"><small>' + esc(k[0]) + '</small><div class="v">' + esc(k[1]) + '</div><span class="note">' + esc(k[2]) + '</span></div>'; }).join('') + '</section>';
+    var recon = '<div class="soa-rec"><div><small>Baki awal ' + dmy(s.from) + '</small><b>' + rmf(s.open) + '</b></div><span>+</span><div><small>Invois (debit)</small><b>' + rmf(s.dr) + '</b></div><span>−</span><div><small>Bayaran (kredit)</small><b>' + rmf(s.cr) + '</b></div><span>=</span><div class="tot"><small>Baki akhir ' + dmy(s.to) + '</small><b>' + rmf(s.close) + '</b></div></div>';
+    var txRows = '<tr class="ob"><td>' + dmy(s.from) + '</td><td></td><td></td><td>Baki dibawa ke hadapan</td><td></td><td></td><td class="n"><b>' + rmf(s.open) + '</b></td></tr>' + s.tx.map(function (t) {
+      return '<tr><td>' + dmy(t.d) + '</td><td>' + (t.t === 'INV' ? '<span class="chip">INV</span>' : '<span class="chip g">BYR</span>') + '</td><td>' + (/^https?:/.test(t.file || '') ? '<a href="' + esc(t.file) + '" target="_blank" rel="noopener">' + esc(t.ref) + '</a>' : esc(t.ref)) + '</td><td>' + esc(t.desc) + '</td><td class="n">' + (t.dr ? rmf(t.dr) : '') + '</td><td class="n">' + (t.cr ? rmf(t.cr) : '') + '</td><td class="n">' + rmf(t.bal) + '</td></tr>';
+    }).join('') + '<tr class="ob"><td>' + dmy(s.to) + '</td><td></td><td></td><td><b>Baki akhir</b></td><td class="n"><b>' + rmf(s.dr) + '</b></td><td class="n"><b>' + rmf(s.cr) + '</b></td><td class="n"><b>' + rmf(s.close) + '</b></td></tr>';
+    var stmt = '<section class="glass pad"><div class="sec-h"><h3>Penyata akaun</h3><span class="note">' + s.tx.length + ' transaksi · klik rujukan untuk buka invois / slip</span></div>' + recon +
+      '<div class="tw"><table class="t soa-t"><thead><tr><th>Tarikh</th><th>Jenis</th><th>Rujukan</th><th>Butiran</th><th class="n">Debit (invois)</th><th class="n">Kredit (bayaran)</th><th class="n">Baki</th></tr></thead><tbody>' + txRows + '</tbody></table></div></section>';
+    var agCols = ['g', 'y', 'o', 'r', 'r'];
+    var aging = '<section class="glass pad"><div class="sec-h"><h3>Umur hutang (aging) pada ' + dmy(s.to) + '</h3><span class="note">Ikut hari selepas tarikh jatuh tempo</span></div>' +
+      '<div class="agebar">' + s.aging.map(function (a, i) { return a.v ? '<i class="' + agCols[i] + '" style="flex:' + a.v + '" title="' + esc(a.l) + '"></i>' : ''; }).join('') + (agTot ? '' : '<i class="g" style="flex:1"></i>') + '</div>' +
+      '<div class="agegrid">' + s.aging.map(function (a, i) { return '<div><span class="dot ' + (agCols[i] === 'o' ? 'y' : agCols[i]) + '"></span><small>' + esc(a.l) + '</small><b>' + rmf(a.v) + '</b><em>' + a.n + ' invois · ' + (agTot ? Math.round(a.v / agTot * 100) : 0) + '%</em></div>'; }).join('') + '</div>' +
+      (s.openInv.length ? '<details' + (lateAmt ? ' open' : '') + '><summary class="note" style="cursor:pointer;margin-top:10px">Senarai invois belum dibayar (' + s.openInv.length + ')</summary><div class="tw" style="margin-top:8px"><table class="t"><thead><tr><th>No. invois</th><th>Cawangan</th><th>Tarikh</th><th>Jatuh tempo</th><th class="n">Hari lewat</th><th class="n">Amaun</th><th>Status</th></tr></thead><tbody>' +
+        s.openInv.map(function (x) { return '<tr><td>' + (/^https?:/.test(x.file || '') ? '<a href="' + esc(x.file) + '" target="_blank" rel="noopener">' + esc(x.inv || x.id) + '</a>' : esc(x.inv || x.id)) + '</td><td>' + esc(CAWN[x.caw] || x.caw) + '</td><td>' + dmy(x.d) + '</td><td>' + dmy(x.due) + '</td><td class="n">' + (x.late > 0 ? '<b style="color:#ff8b8b">' + x.late + '</b>' : '—') + '</td><td class="n">' + rmf(x.amt) + '</td><td>' + chip(x.st, x.st === 'Diluluskan' ? 'g' : 'w') + '</td></tr>'; }).join('') + '</tbody></table></div></details>' : '') + '</section>';
+    var cawMax = s.byCaw.length ? s.byCaw[0].v : 1;
+    var charts = '<section class="grid2"><div class="glass pad"><div class="sec-h"><h3>Belian ikut bulan</h3></div>' + barChart(s.months.map(function (m) { return { l: m.m.slice(5) + '/' + m.m.slice(2, 4), v: m.v }; }), { a: 'Belian (RM)', w: 560 }) + '</div>' +
+      '<div class="glass pad"><div class="sec-h"><h3>Belian ikut cawangan</h3></div>' + (s.byCaw.length ? hbars(s.byCaw.map(function (c) { return { l: CAWN[c.caw] || c.caw, v: s.spend ? c.v / s.spend * 100 : 0, sub: rmf(c.v), lamp: 'g' }; }), { max: 100 }) : '<div class="empty">Tiada belian dalam tempoh</div>') + '</div></section>';
+    var items = '<section class="glass pad"><div class="sec-h"><div><h3>Item & harga</h3><div class="note">Dari tab AP › Item Invois · ' + s.itemRows + ' baris</div></div></div>' + (s.items.length ?
+      '<div class="tw"><table class="t"><thead><tr><th>Item</th><th>Unit</th><th class="n">Kuantiti</th><th class="n">Jumlah</th><th class="n">Harga purata</th><th class="n">Min – Maks</th><th class="n">Terkini</th><th class="n">Perubahan</th></tr></thead><tbody>' +
+      s.items.map(function (o) { return '<tr><td><b>' + esc(o.item) + '</b><div class="muted" style="font-size:11px">' + o.n + ' kali dibeli</div></td><td>' + esc(o.unit || '—') + '</td><td class="n">' + fnum(o.qty, o.qty % 1 ? 2 : 0) + '</td><td class="n">' + rmf(o.amt) + '</td><td class="n">' + (o.avg ? rmf(o.avg) : '—') + '</td><td class="n">' + (o.pmin !== null ? rmf(o.pmin) + ' – ' + rmf(o.pmax) : '—') + '</td><td class="n">' + (o.plast !== null ? rmf(o.plast) : '—') + '</td><td class="n">' + (o.chg === null ? '—' : '<b style="color:' + (o.chg > 0.5 ? '#ff8b8b' : o.chg < -0.5 ? '#2fe07a' : 'inherit') + '">' + (o.chg > 0 ? '+' : '') + o.chg.toFixed(1) + '%</b>') + '</td></tr>'; }).join('') + '</tbody></table></div>'
+      : '<div class="empty">Belum ada butiran item untuk vendor ini. Rekod item, kuantiti dan harga di tab <b>Item Invois</b> (fail AP) semasa invois direkod — FIRAX akan kira volum dan perubahan harga secara automatik.</div>') + '</section>';
+    var tips = '<section class="glass pad soa-tips"><div class="sec-h"><h3>🎯 Petunjuk rundingan supplier 2027</h3><span class="note">Dijana daripada data, bukan andaian</span></div>' + s.tips.map(function (t) { return '<div class="tip"><span class="dot ' + t[0] + '"></span><p>' + esc(t[1]) + '</p></div>'; }).join('') + '</section>';
+    return head + tiles + tips + stmt + aging + charts + items;
+  }
+  A.soaPick = function (el) { S.soaQ.sup = el.getAttribute('data-k'); view('<div class="skel" style="height:300px"></div>'); renderSoa(); window.scrollTo(0, 0); };
+  A.soaP = function (el) { var p = el.getAttribute('data-p'), rg = soaRange(p, S.soa.today); S.soaQ.p = p; S.soaQ.from = rg[0]; S.soaQ.to = rg[1]; renderSoa(); };
+  A.soaGo = function () { var f = val('sf'), t = val('st'); if (!f || !t) { toast('Pilih tarikh', true); return; } S.soaQ.from = f; S.soaQ.to = t; S.soaQ.p = ''; renderSoa(); };
+  A.soaXls = function () {
+    var r = S.soa, s = r.soa, v = s.sup, name = 'SOA ' + v.short + ' ' + dmy(s.from).replace(/\//g, '') + '-' + dmy(s.to).replace(/\//g, '');
+    var st = [['PENYATA AKAUN SUPPLIER (STATEMENT OF ACCOUNT)'], ['Sofwah Arabiata (M) Sdn Bhd'], ['Supplier', v.key], ['Kod', v.kod], ['Terma (hari)', v.terma], ['Tempoh', dmy(s.from) + ' – ' + dmy(s.to)], ['Disediakan', dmy(r.today) + ' oleh ' + S.me.name], [],
+      ['Tarikh', 'Jenis', 'Rujukan', 'Butiran', 'Debit (invois) RM', 'Kredit (bayaran) RM', 'Baki RM'], [dmy(s.from), '', '', 'Baki dibawa ke hadapan', '', '', r2(s.open)]]
+      .concat(s.tx.map(function (t) { return [dmy(t.d), t.t === 'INV' ? 'Invois' : 'Bayaran', t.ref, t.desc, t.dr ? r2(t.dr) : '', t.cr ? r2(t.cr) : '', t.bal]; }))
+      .concat([[dmy(s.to), '', '', 'BAKI AKHIR', r2(s.dr), r2(s.cr), r2(s.close)]]);
+    var ag = [['UMUR HUTANG pada ' + dmy(s.to)], ['Kategori', 'Bil. invois', 'Amaun RM']].concat(s.aging.map(function (a) { return [a.l, a.n, r2(a.v)]; })).concat([[], ['No. invois', 'Cawangan', 'Tarikh', 'Jatuh tempo', 'Hari lewat', 'Amaun RM', 'Status']])
+      .concat(s.openInv.map(function (x) { return [x.inv || x.id, CAWN[x.caw] || x.caw, dmy(x.d), dmy(x.due), Math.max(0, x.late), r2(x.amt), x.st]; }));
+    var an = [['ANALISIS & RUNDINGAN 2027'], ['Belian tempoh RM', r2(s.spend)], ['Bil. invois', s.invN], ['Purata invois RM', r2(s.avgInv)], ['Bahagian AP %', s.share === null ? '' : r2(s.share)], ['Ranking', s.rank + ' / ' + s.ranks], ['Unjuran setahun RM', r2(s.annual)], ['Hari bayar purata (DPO)', s.dpo === null ? '' : Math.round(s.dpo)], ['Bayar tepat masa %', s.ontime === null ? '' : Math.round(s.ontime)], [],
+      ['Bulan', 'Belian RM']].concat(s.months.map(function (m) { return [m.m, m.v]; })).concat([[], ['Cawangan', 'Belian RM']]).concat(s.byCaw.map(function (c) { return [CAWN[c.caw] || c.caw, r2(c.v)]; })).concat([[], ['Petunjuk']]).concat(s.tips.map(function (t) { return [t[1]]; }));
+    var it = [['Item', 'Unit', 'Kuantiti', 'Jumlah RM', 'Harga purata RM', 'Harga min RM', 'Harga maks RM', 'Harga terkini RM', 'Perubahan %', 'Kali dibeli']].concat(s.items.map(function (o) { return [o.item, o.unit, r2(o.qty), r2(o.amt), o.avg ? r2(o.avg) : '', o.pmin, o.pmax, o.plast, o.chg === null ? '' : r2(o.chg), o.n]; }));
+    dlXlsx(name, [{ n: 'Penyata', rows: st, w: [12, 9, 16, 46, 16, 16, 14] }, { n: 'Umur hutang', rows: ag, w: [22, 14, 12, 12, 10, 12, 12] }, { n: 'Analisis', rows: an, w: [26, 16] }, { n: 'Item & harga', rows: it, w: [30, 8, 10, 12, 14, 12, 12, 14, 12, 10] }]);
+  };
+  /* Muat turun senarai run bayaran (untuk M2U / rekod) */
+  A.payXls = function () {
+    var r = S.pay, rows = [['SENARAI BAYARAN ' + r.day.toUpperCase() + ' ' + ymdS(r.ymd)], ['Hanya item Diluluskan. Nombor akaun bank rujuk M2U / fail HR (tidak disimpan di FIRAX).'], [], ['Penerima', 'Cawangan', 'No. invois / perkara', 'Tarikh invois', 'Jatuh tempo', 'Amaun RM', 'Status', 'Rujukan bayaran']];
+    r.groups.forEach(function (g) { g.items.forEach(function (x) { rows.push([g.label, CAWN[x.caw] || x.caw, x.inv, x.tinv, x.due, r2(x.amt), x.st, x.ref || '']); }); rows.push(['', '', '', '', 'Jumlah ' + g.label, r2(g.total), '', '']); });
+    if (r.hr) { (r.sambilan || []).forEach(function (p) { rows.push(['Sambilan · ' + p.name, CAWN[p.caw] || p.caw, p.rows.map(function (x) { return x.mon; }).join(', '), '', '', r2(p.amt), p.hold ? 'DITAHAN — jangan bayar' : p.final ? 'Boleh dibayar' : 'Belum muktamad', '']); }); (r.bday || []).forEach(function (b) { rows.push(['Hadiah hari jadi · ' + b.name, CAWN[b.caw] || b.caw, 'Hari jadi ' + b.bd, '', ymdS(b.pay), 100, 'Belum dibayar', '']); }); }
+    rows.push([], ['', '', '', '', 'JUMLAH PERLU DIBAYAR', r2(r.sum.due - r.sum.paid)]);
+    dlXlsx('Bayaran ' + r.day + ' ' + ymdS(r.ymd).replace(/\//g, ''), [{ n: 'Senarai bayaran', rows: rows, w: [30, 14, 20, 12, 18, 12, 20, 18] }]);
   };
 
   /* ======================= acara & mula ======================= */
