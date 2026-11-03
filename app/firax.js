@@ -125,7 +125,7 @@
     { k: 'aliran', n: 'Aliran tunai bersih', m: /aliran (tunai|bersih)/i, a: 'Wang yang betul-betul masuk ke bank tolak wang yang keluar dalam tempoh itu. Ini bukan untung: untung boleh positif sedangkan tunai berkurang.', f: 'Terimaan bank − bayaran bank', s: 'Positif setiap bulan. Negatif 2 bulan berturut = amaran.', w: 'Finance Manager' },
     { k: 'runway', n: 'Runway tunai', m: /runway/i, a: 'Berapa minggu syarikat boleh terus membayar kos operasi dengan tunai sedia ada, jika tiada wang masuk.', f: 'Baki semua akaun bank ÷ purata opex seminggu', s: 'Sihat ≥ 8 minggu (2 bulan). 🔴 bawah 2 minggu.', w: 'CEO + Finance Manager' },
     { k: 'baki', n: 'Baki bank', m: /^baki (semua|bank)/i, a: 'Jumlah wang dalam semua akaun bank syarikat pada tarikh penyata terakhir.', f: 'Baki awal + terimaan − bayaran', s: 'Sentiasa melebihi opex 8 minggu.', w: 'Finance Manager' },
-    { k: 'rekon', n: 'Rekon (rekonsiliasi) harian', m: /rekon|hari 🟢|padan/i, a: 'Memadankan jualan yang direkod di POS (FeedMe) dengan wang yang benar-benar masuk ke bank, ikut kaedah bayaran (QR, kad, online).', f: 'Hari padan ÷ hari yang ada penyata bank', s: 'Amalan terbaik: rekon setiap hari bekerja; 100% hari padan atau ada sebab bertulis.', w: 'Staf Akaun + BM' },
+    { k: 'rekon', n: 'Rekon (rekonsiliasi) harian', m: /rekon|hari 🟢|padan/i, a: 'Memadankan jualan yang direkod di POS (FeedMe) dengan wang yang benar-benar masuk ke bank, ikut kaedah bayaran (QR, kad, online).', f: 'Hari padan ÷ hari yang ada penyata bank', s: 'Sofwah: transaksi & rekon dikemas kini setiap Ahad untuk 7 hari lepas; sasaran 100% hari padan atau ada sebab bertulis.', w: 'Staf Akaun + BM' },
     { k: 'short', n: 'SHORT / LEBIH', m: /short|lebih \(|beza \(rm\)|jurang/i, a: 'SHORT: wang masuk bank KURANG daripada jualan. LEBIH: wang masuk LEBIH. Selalunya disebabkan masa settlement kad atau QR masuk akaun lain.', f: 'Diterima bank − jangkaan dari POS', s: 'Beza ≤ toleransi (RM50) atau ada sebab bertulis.', w: 'Staf Akaun' },
     { k: 'payout', n: 'Payout delivery', m: /payout|potongan/i, a: 'Wang yang dibayar oleh Grab, foodpanda atau Shopee kepada Sofwah selepas mereka tolak komisen, iklan dan diskaun.', f: 'Jualan platform − potongan platform', s: 'Payout masuk bank ikut jadual platform; beza dengan jangkaan ≤ 3%.', w: 'PIC Delivery + Staf Akaun' },
     { k: 'ketepatan', n: 'Ketepatan POS delivery', m: /ketepatan/i, a: 'Adakah setiap pesanan delivery ditekan di FeedMe? Jika POS rekod kurang daripada portal, jualan dan SST dalam laporan terkurang.', f: 'Jualan delivery di POS ÷ jualan di portal platform', s: '99% hingga 101%. Bawah 97% atau atas 103% = 🔴.', w: 'PIC Delivery' },
@@ -173,7 +173,7 @@
     'M5 P&L Cawangan': ['Untung atau rugi setiap cawangan bulan ini (asas tunai).', 'Margin bersih dan lampu. ⚪ bermaksud kos belum lengkap, jangan buat keputusan dahulu.', 'Lengkapkan kategori bayaran bank dan payroll sebelum P&L dibentang.'],
     'M7 Food Cost': ['Kos bahan berbanding jualan, dan menu mana untung atau rugi.', 'Food cost % (industri 28% hingga 35%) dan menu belum berkos.', 'Isi modal per plate 20 menu terlaris dahulu.'],
     'M8 Tenaga Kerja': ['Kos staf dan produktiviti setiap cawangan dan slot waktu.', 'SPLH (sasaran RM60) dan slot 🔴 kekurangan staf.', 'HR + BM alih staf dari slot berlebihan ke slot kekurangan sebelum menambah pekerja.'],
-    'M4 AP & Opex': ['Invois supplier yang belum dibayar dan umurnya.', 'Tertunggak dan invois lebih 60 hari.', 'Semak invois baharu setiap hari; bayar ikut run Isnin & Khamis.'],
+    'M4 AP & Opex': ['Invois supplier yang belum dibayar dan umurnya.', 'Tertunggak dan invois lebih 60 hari.', 'Semak invois baharu setiap hari; bayar ikut run Ahad & Rabu (supplier) dan Selasa (HR) di halaman Bayaran.'],
     'M13 QB Kewangan': ['P&L dan kunci kira-kira rasmi daripada QuickBooks, dengan penilaian juruaudit.', 'Untung bersih versi QB lawan versi dilaras juruaudit.', 'FM selesaikan pelarasan sebelum laporan digunakan untuk bank atau LHDN.'],
     'M14 Audit Pendapatan': ['Perbandingan jualan FeedMe (POS) dengan rekod QuickBooks dan senarai penemuan audit.', 'Penemuan 🔴 dan jurang pendapatan.', 'Selesaikan penemuan 🔴 satu per satu dan catat bukti.'],
     'M6 Breakeven': ['Jualan minimum setiap cawangan supaya tidak rugi.', '% capai breakeven (sasaran ≥ 120%). ⚪ bermaksud input kos belum lengkap.', 'Finance sahkan kos tetap F01–F12 dengan bil sebenar.'],
@@ -297,6 +297,7 @@
   var PG = {
     home: { t: 'Utama', i: 'home', sub: 'Pusat kawalan kewangan · gambaran 30 saat' },
     routine: { t: 'Rutin Kewangan', i: 'routine', sub: 'Apa perlu dibuat hari ini, minggu ini dan bulan ini (SOP standard)' },
+    pay: { t: 'Bayaran', i: 'bank', sub: 'Run bayaran Ahad & Rabu (supplier) · Selasa (HR) · hanya senarai diluluskan' },
     actions: { t: 'Tindakan', i: 'actions', sub: 'Action Engine · setiap 🔴 ada PIC, SLA dan cara selesaikan' },
     cash: { t: 'Tunai & Ramalan', i: 'cash', sub: 'Baki bank, aliran tunai, runway dan ramalan' },
     sales: { t: 'Jualan & Rekon', i: 'sales', sub: 'POS lawan bank setiap hari, payout delivery dan semakan harga' },
@@ -308,7 +309,7 @@
     guide: { t: 'Panduan & Kamus', i: 'guide', sub: 'Maksud setiap istilah, julat sihat industri dan cara guna FIRAX' },
     settings: { t: 'Tetapan', i: 'settings', sub: 'Pengguna, ambang, PIC dan sumber data', ceo: true }
   };
-  var NAVG = [['', ['home', 'routine', 'actions']], ['Modul', ['cash', 'sales', 'profit', 'books', 'planning', 'control']], ['Sistem', ['live', 'guide', 'settings']]];
+  var NAVG = [['', ['home', 'routine', 'pay', 'actions']], ['Modul', ['cash', 'sales', 'profit', 'books', 'planning', 'control']], ['Sistem', ['live', 'guide', 'settings']]];
   function navHtml() {
     var red = S.home && S.home.actions && S.home.actions.counts ? num(S.home.actions.counts.r) : 0, rt = S.rt && S.rt.prog ? S.rt.prog.H : null;
     return NAVG.map(function (g) {
@@ -341,7 +342,7 @@
   function go(p) {
     if (!PG[p]) p = 'home'; S.page = p; sset('firax.p', p); closeModal();
     layout(); window.scrollTo(0, 0);
-    var R = { home: renderHome, actions: renderActions, settings: renderSettings, routine: renderRoutine, guide: renderGuide }[p] || renderModule;
+    var R = { home: renderHome, actions: renderActions, settings: renderSettings, routine: renderRoutine, guide: renderGuide, pay: renderPay }[p] || renderModule;
     R();
   }
   A.nav = function (el) { go(el.getAttribute('data-p')); };
@@ -349,7 +350,7 @@
   A.closeSide = function () { var s = $('#side'); if (s) s.classList.remove('open'); var c = $('#scrim'); if (c) c.classList.remove('open'); };
   A.refresh = function (el) {
     if (el) el.disabled = true; toast('Memuat semula dari sheet FIRAX…');
-    rpc('fxRefresh', [S.token]).then(function () { S.home = null; S.pages = {}; S.acts = null; S.rt = null; return rpc('fxHome', [S.token]); })
+    rpc('fxRefresh', [S.token]).then(function () { S.home = null; S.pages = {}; S.acts = null; S.rt = null; S.pay = null; return rpc('fxHome', [S.token]); })
       .then(function (h) { S.home = h; go(S.page); toast('Data dikemas kini'); }).catch(function (e) { toast(e.error, true); if (el) el.disabled = false; });
   };
   A.userMenu = function () {
@@ -626,7 +627,7 @@
   };
 
   /* ======================= Rutin Kewangan (SOP) ======================= */
-  var CADS = [['H', 'Harian', 'Setiap hari bekerja'], ['M', 'Mingguan', 'Minggu ini'], ['B', 'Bulanan', 'Bulan ini · tutup buku'], ['T', 'Tahunan', 'Tahun ini']];
+  var CADS = [['H', 'Harian', 'Setiap hari bekerja'], ['M', 'Mingguan', 'Ahad transaksi · bayaran Ahad/Selasa/Rabu'], ['B', 'Bulanan', 'Bulan ini · tutup buku'], ['T', 'Tahunan', 'Tahun ini']];
   function renderRoutine() { needRt().then(routineView).catch(fail); }
   function routineView(r) {
     var f = S.rtF || 'H', list = r.tasks.filter(function (t) { return t.c === f; });
@@ -691,6 +692,124 @@
       '<div class="gloss">' + (list.length ? list.map(function (g) { return '<article class="gcard">' + glossHtml(g) + '</article>'; }).join('') : '<div class="empty">Tiada istilah sepadan</div>') + '</div></section>');
     var inp = $('#gq'); if (inp) { inp.oninput = function () { S.gq = this.value; var pos = this.selectionStart; renderGuide(); var n = $('#gq'); n.focus(); n.setSelectionRange(pos, pos); }; }
   }
+
+  /* ======================= Bayaran (run Ahad · Selasa · Rabu) ======================= */
+  var CAWN = { GN: 'Gurun', KN: 'Kuala Nerang', SP: 'Sungai Petani', AS: 'Alor Setar', JT: 'Jitra', AC: 'Aman Central', HQ: 'HQ' };
+  function rmf(n) { return 'RM' + fnum(n, 2); }
+  function renderPay(ymd) {
+    var want = ymd || S.payD || '';
+    rpc('fxPay', [S.token, want]).then(function (r) { S.pay = r; S.payD = r.ymd; payView(r); }).catch(function (e) { if (want) { S.payD = ''; renderPay(); } else fail(e); });
+  }
+  function link(u, t) { return /^https?:\/\//.test(u || '') ? '<a href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(t) + '</a>' : '<span class="muted">' + esc(u ? 'WhatsApp' : '—') + '</span>'; }
+  function payView(r) {
+    var tabs = '<section class="paytabs">' + r.runs.map(function (d) {
+      return '<button class="glass ptab' + (d.ymd === r.ymd ? ' on' : '') + '" data-act="payD" data-d="' + d.ymd + '"><small>' + (d.today ? 'HARI INI · ' : d.past ? 'LEPAS · ' : '') + esc(d.dmy) + '</small><b>' + esc(d.day) + '</b><span>' + (d.hr ? 'HR: staf, sambilan, hari jadi' : 'Supplier / vendor') + '</span></button>';
+    }).join('') + '</section>';
+    var s = r.sum, left = s.n - s.nPaid;
+    var tiles = '<section class="sumtiles">' +
+      '<div class="glass sumtile"><div><b>' + rmf(s.due - s.paid) + '</b><small>Perlu dibayar run ini</small></div></div>' +
+      '<div class="glass sumtile"><div><b>' + left + '</b><small>Penerima belum dibayar</small></div></div>' +
+      '<div class="glass sumtile"><div><b>' + rmf(s.paid) + '</b><small>Sudah dibayar · ' + s.nPaid + ' penerima</small></div></div>' +
+      '<div class="glass sumtile"><div><b style="color:var(--y)">' + r.wait.n + '</b><small>Belum diluluskan · ' + rmf(r.wait.amt) + ' (tidak dibayar)</small></div></div></section>';
+    var steps = [['1', 'Buka folder bayaran', 'Semua invois run ini dalam satu folder Drive.'], ['2', 'Bayar di M2U Biz', 'Ikut jumlah dalam setiap kad. Satu supplier = satu transaksi.'], ['3', 'Tanda dibayar', 'Muat naik slip dan isi rujukan M2U.'], ['4', 'Sistem buat selebihnya', 'Slip dinamakan, difailkan ke folder supplier' + (r.autoMail ? ' dan emel balasan dihantar ke supplier' : '') + '.']];
+    var how = '<section class="glass pad"><div class="sec-h"><div><div class="kicker">' + esc(r.day) + ' · ' + esc(ymdS(r.ymd)) + (r.hr ? ' · Khusus HR' : ' · Supplier') + '</div><h3 style="margin-top:6px">Hanya item dalam senarai ini dibayar</h3></div>' +
+      (r.canEdit ? '<div class="row-btn" style="margin:0"><button class="btn" data-act="payFile">' + ic(I.refresh) + 'Fail & namakan invois</button><button class="btn pri" data-act="payFolder">' + ic(I.books) + 'Buka folder bayaran</button></div>' : '') + '</div>' +
+      '<div class="steps4">' + steps.map(function (x) { return '<div><span>' + x[0] + '</span><b>' + esc(x[1]) + '</b><p>' + esc(x[2]) + '</p></div>'; }).join('') + '</div></section>';
+    var body = '';
+    if (!r.groups.length && !(r.hr && (r.sambilan.length || r.bday.length))) body = '<section class="glass pad"><div class="empty">✅ Tiada bayaran dijadualkan untuk ' + esc(r.day) + ' ini.' + (r.wait.n ? '<br>' + r.wait.n + ' invois masih menunggu kelulusan — lihat di bawah.' : '') + '</div></section>';
+    body += r.groups.map(function (g, i) { return supCard(r, g, i); }).join('');
+    if (r.hr) body += sambilanCard(r) + bdayCard(r);
+    view(tabs + tiles + how + body + waitCard(r) +
+      '<div class="note" style="text-align:center">FIRAX tidak membuat bayaran dan tidak menyimpan nombor akaun bank. Bayaran dibuat oleh staf di M2U Biz; sistem hanya menyediakan senarai, memfailkan slip dan menghantar emel balasan.</div>');
+  }
+  function ymdS(y) { var p = String(y).split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+  function supCard(r, g, i) {
+    var done = g.paid >= g.total - 0.004, part = g.paid > 0 && !done, open = g.items.filter(function (x) { return x.st !== 'Dibayar'; });
+    var mailSt = g.items.map(function (x) { return x.mail; }).filter(String)[0] || '';
+    var head = '<div class="sec-h"><div><h3>' + (done ? '✅ ' : '') + esc(g.label) + '</h3><div class="meta">' +
+      chip(g.staff ? 'Tuntutan staf' : (g.hari || 'Hari bayar belum ditetapkan'), g.hari ? '' : 'y') +
+      (g.email ? '<span class="chip">✉ ' + esc(g.email) + '</span>' : '<span class="chip w">Tiada emel · WhatsApp</span>') +
+      (g.items.some(function (x) { return x.late && x.st !== 'Dibayar'; }) ? '<span class="chip r">Tertunggak dari run lepas</span>' : '') +
+      (mailSt ? '<span class="chip ' + (/Dihantar/.test(mailSt) ? 'g' : /Menunggu/.test(mailSt) ? 'y' : 'w') + '">' + esc(mailSt) + '</span>' : '') +
+      (g.folder ? '<a class="chip" href="' + esc(g.folder) + '" target="_blank" rel="noopener">📁 Folder supplier</a>' : '') + '</div></div>' +
+      '<div class="paytot"><small>' + (done ? 'Dibayar' : part ? 'Baki' : 'Jumlah bayar') + '</small><b>' + rmf(done ? g.total : g.total - g.paid) + '</b></div></div>';
+    var rows = g.items.map(function (x) {
+      return '<tr class="' + (x.st === 'Dibayar' ? 'paid' : '') + '"><td>' + esc(CAWN[x.caw] || x.caw) + '</td><td><b>' + show(x.inv) + '</b><div class="muted" style="font-size:11px">' + esc(x.id) + '</div></td><td>' + show(x.tinv) + '</td><td>' + show(x.due) + '</td><td class="n">' + rmf(x.amt) + '</td><td>' + link(x.file, x.std ? 'Invois ✓' : 'Invois') + '</td><td>' +
+        (x.st === 'Dibayar' ? chip('✅ Dibayar ' + (x.paidOn || ''), 'g') + (x.slip ? ' ' + link(x.slip, 'Slip') : '') : r.canEdit ? '<label class="ck"><input type="checkbox" class="pk" data-g="' + i + '" value="' + x.row + '" checked> bayar</label>' : chip('Belum', 'y')) + '</td></tr>';
+    }).join('');
+    return '<section class="glass pad paycard' + (done ? ' done' : '') + '">' + head + '<div class="tw"><table class="t"><thead><tr><th>Cawangan</th><th>No. invois</th><th>Tarikh invois</th><th>Jatuh tempo</th><th class="n">Amaun</th><th>Fail</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      (open.length && r.canEdit ? '<div class="row-btn"><button class="btn pri" data-act="payMark" data-k="sup" data-g="' + i + '">Tanda dibayar + muat naik slip</button></div>' : '') + '</section>';
+  }
+  function sambilanCard(r) {
+    if (!r.sambilan.length) return '<section class="glass pad"><div class="sec-h"><h3>Staf sambilan / casual</h3></div><div class="empty">Tiada bayaran sambilan tertunggak.</div></section>';
+    var rows = r.sambilan.map(function (p, i) {
+      var ok = !p.hold && p.final;
+      return '<tr><td>' + esc(CAWN[p.caw] || p.caw) + '</td><td><b>' + esc(p.name) + '</b><div class="muted" style="font-size:11px">' + esc(p.jenis) + ' · ' + p.rows.map(function (x) { return esc(x.mon) + ' (' + esc(x.qty) + ')'; }).join(', ') + '</div></td><td class="n">' + rmf(p.amt) + '</td><td>' +
+        (p.hold ? chip('🔴 Ditahan HR — jangan bayar') : !p.final ? chip('⏳ Belum muktamad (4hb)') : r.canEdit ? '<button class="btn sm" data-act="payMark" data-k="sambilan" data-g="' + i + '">Tanda dibayar</button>' : chip('Belum', 'y')) + '</td></tr>';
+    }).join('');
+    var tot = r.sambilan.filter(function (p) { return !p.hold && p.final; }).reduce(function (a, p) { return a + p.amt; }, 0);
+    return '<section class="glass pad"><div class="sec-h"><div><h3>Staf sambilan / casual</h3><div class="note">Dari WAR HR › Bayaran Sambilan. Bank & no. akaun rujuk sheet HR (tidak dipaparkan di FIRAX).</div></div><div class="paytot"><small>Boleh dibayar</small><b>' + rmf(tot) + '</b></div></div>' +
+      '<div class="tw"><table class="t"><thead><tr><th>Cawangan</th><th>Nama</th><th class="n">Jumlah</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div></section>';
+  }
+  function bdayCard(r) {
+    var rows = r.bday.map(function (b, i) {
+      return '<tr><td>' + esc(CAWN[b.caw] || b.caw) + '</td><td><b>' + esc(b.name) + '</b><div class="muted" style="font-size:11px">' + esc(b.id) + '</div></td><td>🎂 ' + esc(b.bd) + '</td><td>' + (b.late ? chip('🔴 Lewat · Selasa ' + ymdS(b.pay)) : chip('🟡 Selasa ini')) + '</td><td class="n">RM100.00</td><td>' + (r.canEdit ? '<label class="ck"><input type="checkbox" class="pkb" value="' + b.row + '" checked> bayar</label>' : '') + '</td></tr>';
+    }).join('');
+    return '<section class="glass pad"><div class="sec-h"><div><h3>🎁 Hadiah hari jadi staf · RM100</h3><div class="note">Dibayar Selasa pertama selepas hari jadi. Senarai dari AP › Hari Jadi Staf (QuickHR; IC tidak disimpan).</div></div><div class="paytot"><small>' + r.bday.length + ' staf</small><b>' + rmf(r.bday.length * 100) + '</b></div></div>' +
+      (r.bday.length ? '<div class="tw"><table class="t"><thead><tr><th>Cawangan</th><th>Nama</th><th>Hari jadi</th><th>Jadual</th><th class="n">Hadiah</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' + (r.canEdit ? '<div class="row-btn"><button class="btn pri" data-act="payMark" data-k="hadiah">Tanda hadiah dibayar</button></div>' : '') : '<div class="empty">Tiada hari jadi untuk dibayar minggu ini.</div>') + '</section>';
+  }
+  function waitCard(r) {
+    if (!r.wait.n) return '';
+    var rows = r.wait.list.map(function (x) {
+      return '<tr><td>' + (r.canApprove ? '<input type="checkbox" class="pka" value="' + x.row + '">' : '') + '</td><td><b>' + esc(x.sup) + '</b><div class="muted" style="font-size:11px">' + esc(x.id) + (x.note ? ' · ' + esc(String(x.note).slice(0, 90)) : '') + '</div></td><td>' + esc(CAWN[x.caw] || x.caw) + '</td><td>' + show(x.inv) + '</td><td>' + show(x.due) + '</td><td class="n">' + rmf(x.amt) + '</td><td>' + chip(x.st, x.st === 'Disemak' ? 'y' : 'w') + '</td><td>' + link(x.file, 'Invois') + '</td></tr>';
+    }).join('');
+    return '<section class="glass pad"><details' + (r.canApprove ? ' open' : '') + '><summary class="sec-h" style="cursor:pointer"><h3>⏳ Menunggu kelulusan · ' + r.wait.n + ' invois · ' + rmf(r.wait.amt) + '</h3><span class="note">Tidak masuk senarai bayaran sehingga Diluluskan</span></summary>' +
+      '<div class="tw"><table class="t"><thead><tr><th></th><th>Supplier</th><th>Cawangan</th><th>No. invois</th><th>Jatuh tempo</th><th class="n">Amaun</th><th>Status</th><th>Fail</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      '<div class="row-btn">' + '<a class="btn" href="' + esc(r.apUrl) + '" target="_blank" rel="noopener">Buka fail AP</a>' + (r.canApprove ? '<button class="btn pri" data-act="payApprove">Luluskan yang dipilih</button>' : '') + '</div></details></section>';
+  }
+  A.payD = function (el) { S.payD = el.getAttribute('data-d'); view('<div class="skel" style="height:300px"></div>'); renderPay(S.payD); };
+  A.payFolder = function (el) {
+    el.disabled = true; toast('Menyediakan folder bayaran…');
+    rpc('fxPayFolder', [S.token, S.pay.ymd]).then(function (x) { el.disabled = false; window.open(x.url, '_blank'); toast('Folder ' + x.name + (x.added ? ' · ' + x.added + ' invois ditambah' : '')); }).catch(function (e) { el.disabled = false; toast(e.error, true); });
+  };
+  A.payFile = function (el) {
+    el.disabled = true; toast('Menamakan & memfailkan invois…');
+    rpc('fxPayFileNow', [S.token]).then(function (x) { toast(x.filed + ' invois difailkan' + (x.errors ? ' · ' + x.errors + ' gagal' : '')); renderPay(S.pay.ymd); }).catch(function (e) { el.disabled = false; toast(e.error, true); });
+  };
+  A.payApprove = function (el) {
+    var rows = Array.prototype.map.call(document.querySelectorAll('.pka:checked'), function (c) { return +c.value; });
+    if (!rows.length) { toast('Pilih invois untuk diluluskan', true); return; }
+    el.disabled = true;
+    rpc('fxPayApprove', [S.token, rows]).then(function (x) { toast(x.approved + ' invois diluluskan · masuk jadual bayaran'); renderPay(S.pay.ymd); }).catch(function (e) { el.disabled = false; toast(e.error, true); });
+  };
+  A.payMark = function (el) {
+    var k = el.getAttribute('data-k'), gi = +el.getAttribute('data-g'), r = S.pay, rows, title, total, needSlip = k === 'sup', key = '';
+    if (k === 'sup') { var g = r.groups[gi]; key = g.key; rows = Array.prototype.map.call(document.querySelectorAll('.pk[data-g="' + gi + '"]:checked'), function (c) { return +c.value; }); total = g.items.filter(function (x) { return rows.indexOf(x.row) >= 0; }).reduce(function (a, x) { return a + x.amt; }, 0); title = g.label; }
+    else if (k === 'sambilan') { var p = r.sambilan[gi]; key = p.name; rows = p.rows.map(function (x) { return x.row; }); total = p.amt; title = 'Sambilan · ' + p.name; }
+    else { rows = Array.prototype.map.call(document.querySelectorAll('.pkb:checked'), function (c) { return +c.value; }); total = rows.length * 100; title = 'Hadiah hari jadi · ' + rows.length + ' staf'; }
+    if (!rows.length) { toast('Pilih sekurang-kurangnya satu baris', true); return; }
+    S.payM = { kind: k, key: key, rows: rows };
+    modal('<h3>Tanda dibayar</h3><p class="note" style="margin:6px 0 14px">' + esc(title) + ' · ' + rows.length + ' baris · <b style="color:#2fe07a">' + rmf(total) + '</b><br>Pastikan jumlah di M2U sama dengan jumlah ini.</p>' +
+      field('Slip bayaran M2U (PDF / gambar)' + (needSlip ? '' : ' · pilihan'), '<input type="file" id="pslip" accept="application/pdf,image/*">') +
+      field('Rujukan transaksi M2U', '<input id="pref" placeholder="cth. M2U 1234567890">') +
+      field('Tarikh bayar', '<input type="date" id="pdate" value="' + esc(r.today) + '" max="' + esc(r.today) + '">') +
+      (k === 'sup' && r.autoMail ? '<p class="note">Selepas disimpan, emel balasan berserta slip dihantar ke supplier dalam ±30 minit (invois yang diterima melalui emel sahaja).</p>' : '') +
+      '<div class="row-btn"><button class="btn" data-act="closeModal">Batal</button><button class="btn pri" id="psave" data-act="paySave">Simpan</button></div>');
+  };
+  A.paySave = function (el) {
+    var m = S.payM, f = $('#pslip').files[0], ref = val('pref'), d = val('pdate');
+    if (!ref) { toast('Isi rujukan M2U', true); return; }
+    if (m.kind === 'sup' && !f) { toast('Muat naik slip bayaran', true); return; }
+    if (f && f.size > 10 * 1048576) { toast('Fail terlalu besar (had 10MB)', true); return; }
+    el.disabled = true; el.textContent = 'Menyimpan…';
+    var send = function (b64) {
+      rpc('fxPaySlip', [S.token, { ymd: S.pay.ymd, kind: m.kind, key: m.key, rows: m.rows, ref: ref, paid: d, b64: b64 || '', mime: f ? f.type : '', name: f ? f.name : '' }])
+        .then(function (x) { closeModal(); toast('✅ ' + x.n + ' baris ditanda Dibayar' + (x.name ? ' · slip: ' + x.name : '')); renderPay(S.pay.ymd); })
+        .catch(function (e) { el.disabled = false; el.textContent = 'Simpan'; toast(e.error, true); });
+    };
+    if (!f) return send('');
+    var rd = new FileReader(); rd.onload = function () { send(String(rd.result).split(',')[1]); }; rd.onerror = function () { el.disabled = false; toast('Gagal membaca fail', true); }; rd.readAsDataURL(f);
+  };
 
   /* ======================= acara & mula ======================= */
   document.addEventListener('click', function (e) {

@@ -404,3 +404,21 @@ table.t td.first{min-width:170px}
   .grid2{grid-template-columns:1fr 1fr}
   details{display:block}details>*{display:block}
 }
+/* ---- Bayaran ---- */
+.paytabs{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.ptab{color:var(--ink);padding:14px 16px;text-align:left;border-radius:18px;cursor:pointer;display:flex;flex-direction:column;gap:2px;border:1px solid var(--line)}
+.ptab small{font-size:10.5px;letter-spacing:.12em;color:var(--mut);font-weight:700}.ptab b{font-size:20px}.ptab span{font-size:12px;color:var(--ink2)}
+.ptab.on{border-color:rgba(47,224,122,.6);box-shadow:0 0 0 3px rgba(47,224,122,.14)}.ptab.on b{color:var(--g)}
+.steps4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.steps4 div{padding:14px;border-radius:16px;border:1px solid var(--line);background:rgba(255,255,255,.025)}
+.steps4 span{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;background:linear-gradient(135deg,#3af08a,#14a34c);color:#03140a;font-weight:800;margin-bottom:8px}
+.steps4 b{font-size:13.5px}.steps4 p{font-size:12.3px;color:var(--ink2);margin:6px 0 0;line-height:1.5}
+.paycard .meta,.sec-h .meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.paycard .meta a.chip{text-decoration:none}
+.paytot{text-align:right;min-width:130px}.paytot small{display:block;color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.1em}.paytot b{font-size:24px;color:var(--g)}
+.paycard.done{opacity:.72}.paycard.done .paytot b{color:var(--ink2)}
+tr.paid td{color:var(--mut)}
+.ck{display:inline-flex;gap:6px;align-items:center;font-size:12px;white-space:nowrap;cursor:pointer}
+.panel input[type=file]{width:100%;padding:10px;border-radius:12px;border:1px dashed var(--line2);background:rgba(0,0,0,.25)}
+@media (max-width:760px){.paytabs{grid-template-columns:repeat(3,1fr);gap:8px}.ptab{padding:10px}.ptab b{font-size:16px}.ptab span{display:none}.steps4{grid-template-columns:1fr 1fr}.paytot b{font-size:19px}.sec-h{flex-wrap:wrap}}
+@media print{.paytabs,.steps4,.row-btn,.ck{display:none!important}}
