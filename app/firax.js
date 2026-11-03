@@ -109,7 +109,7 @@
       if (!window.google || !google.script) return rej({ error: 'Buka FIRAX melalui pautan rasmi (firax.sofwah.my).' });
       var r = google.script.run.withSuccessHandler(function (x) {
         if (x && x.ok) return res(x.data);
-        if (x && x.code === 'AUTH' && S.token) { sset(TK, null); S.token = null; renderLogin(x.error); }
+        if (x && x.code === 'AUTH' && S.token) { sset(TK, null); S.token = null; dropKept(); renderLogin(x.error); }
         if (x && x.code === 'PINCHANGE' && S.token && S.me) { S.me.mustChange = true; forcePin(); }
         rej(x || { error: 'Tiada jawapan daripada pelayan.' });
       }).withFailureHandler(function (e) { rej({ error: (e && e.message) || 'Masalah sambungan. Cuba lagi.' }); });
@@ -228,7 +228,7 @@
     if (k === 'del') S.pin = S.pin.slice(0, -1); else if (S.pin.length < 4) S.pin += k;
     dots(); if (S.pin.length === 4) submitPin();
   };
-  A.back = function () { if (S.token) { rpc('fxLogout', [S.token]).catch(function () {}); sset(TK, null); } renderLogin(); };
+  A.back = function () { if (S.token) { rpc('fxLogout', [S.token]).catch(function () {}); sset(TK, null); } dropKept(); S.token = null; S.home = null; S.pages = {}; S.acts = null; S.rt = null; S.pay = null; S.soa = null; S.payT = null; renderLogin(); };
   A.logout = A.back;
   function submitPin() {
     var pin = S.pin; S.pin = ''; $$('.pinpad button').forEach(function (b) { b.disabled = true; });
@@ -268,9 +268,11 @@
   function start(token, me, boot) {
     S.token = token; S.me = me; sset(TK, token);
     if (me && me.mustChange) return forcePin();
-    if (boot && boot.home) S.home = boot.home;
-    var p = window.FX_PAGE || sget('firax.p') || 'home'; if (!PG[p]) p = 'home';
+    hydrate();
+    var fresh = !!(boot && boot.home); if (fresh) { S.home = boot.home; keep('home', boot.home); }
+    var p = window.FX_PAGE || sget('firax.p') || homePage(); if (!PG[p] || !canSee(p)) p = homePage();
     go(p);
+    setTimeout(function () { if (!(fresh && p === 'home')) revalidate(); setTimeout(prefetch, 1200); }, 400);
   }
 
   /* ======================= rangka app ======================= */
@@ -294,33 +296,57 @@
   I.routine = '<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>';
   I.guide = '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/>';
   I.print = '<path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/>';
+  I.search = '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>';
+  I.more = '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>';
+  /* Struktur v2.1: ikut KERJA pengguna, bukan ikut modul sheet. Bahasa mudah; kod M1–M14 hanya dalam tab. */
   var PG = {
-    home: { t: 'Utama', i: 'home', sub: 'Pusat kawalan kewangan · gambaran 30 saat' },
-    routine: { t: 'Rutin Kewangan', i: 'routine', sub: 'Apa perlu dibuat hari ini, minggu ini dan bulan ini (SOP standard)' },
-    pay: { t: 'Bayaran', i: 'bank', sub: 'Run bayaran Ahad & Rabu (supplier) · Selasa (HR) · hanya senarai diluluskan' },
-    soa: { t: 'Penyata Supplier', i: 'bill', sub: 'Statement of Account · baki, invois, bayaran, umur hutang & rundingan 2027' },
-    actions: { t: 'Tindakan', i: 'actions', sub: 'Action Engine · setiap 🔴 ada PIC, SLA dan cara selesaikan' },
-    cash: { t: 'Tunai & Ramalan', i: 'cash', sub: 'Baki bank, aliran tunai, runway dan ramalan' },
-    sales: { t: 'Jualan & Rekon', i: 'sales', sub: 'POS lawan bank setiap hari, payout delivery dan semakan harga' },
-    profit: { t: 'Untung & Kos', i: 'profit', sub: 'P&L cawangan, food cost, kos staf, AP & Opex' },
-    books: { t: 'Buku & Audit', i: 'books', sub: 'P&L dan kunci kira-kira QuickBooks serta penemuan juruaudit' },
-    planning: { t: 'Perancangan', i: 'planning', sub: 'Breakeven, bajet dan simulasi cawangan baharu' },
-    control: { t: 'Kawalan & Cukai', i: 'control', sub: 'Kawalan dalaman, SST, e-Invois dan kad skor 10 KPI' },
-    live: { t: 'Live', i: 'live', sub: 'Kesegaran data, jualan 7 hari dan pengesan anomali' },
-    guide: { t: 'Panduan & Kamus', i: 'guide', sub: 'Maksud setiap istilah, julat sihat industri dan cara guna FIRAX' },
-    settings: { t: 'Tetapan', i: 'settings', sub: 'Pengguna, ambang, PIC dan sumber data', ceo: true }
+    home: { t: 'Ringkasan', i: 'home', sub: 'Keadaan kewangan Sofwah dalam 30 saat', q: 'Adakah kewangan kita sihat hari ini?' },
+    routine: { t: 'Tugas Saya', i: 'routine', sub: 'Senarai semak harian, mingguan & bulanan · langkah demi langkah', q: 'Apa saya perlu buat hari ini?' },
+    actions: { t: 'Amaran', i: 'actions', sub: 'Isu 🔴 yang perlu diselesaikan · siapa, bila, cara', q: 'Apa yang tidak kena dan siapa uruskan?' },
+    pay: { t: 'Bayaran', i: 'bank', sub: 'Ahad & Rabu: supplier · Selasa: staf & HR · hanya yang diluluskan', q: 'Siapa perlu dibayar hari ini?' },
+    soa: { t: 'Supplier', i: 'bill', sub: 'Penyata akaun setiap supplier · hutang, umur hutang, belian & harga', q: 'Berapa kita berhutang dan beli dengan supplier ini?' },
+    cash: { t: 'Tunai', i: 'cash', sub: 'Baki bank, aliran tunai dan berapa lama tunai cukup', q: 'Cukupkah tunai kita?' },
+    sales: { t: 'Jualan & Rekon', i: 'sales', sub: 'Jualan POS lawan wang masuk bank · payout delivery', q: 'Semua jualan masuk ke bank?' },
+    profit: { t: 'Untung & Kos', i: 'profit', sub: 'Untung setiap cawangan, kos bahan, kos staf, AP & opex', q: 'Cawangan mana untung, kos mana tinggi?' },
+    books: { t: 'Buku & Audit', i: 'books', sub: 'P&L dan kunci kira-kira QuickBooks · penemuan audit', q: 'Buku kita bersih untuk audit?' },
+    planning: { t: 'Perancangan', i: 'planning', sub: 'Breakeven, bajet, ramalan dan cawangan baharu', q: 'Berapa jualan perlu untuk untung?' },
+    control: { t: 'Kawalan & Cukai', i: 'control', sub: 'Kawalan dalaman, SST, e-Invois dan 10 KPI', q: 'Kita patuh dan terkawal?' },
+    live: { t: 'Status Data', i: 'live', sub: 'Bila setiap sumber data dikemas kini · anomali jualan', q: 'Data ini terkini?' },
+    guide: { t: 'Panduan', i: 'guide', sub: 'Kamus istilah, julat sihat industri dan cara guna FIRAX', q: 'Apa maksud istilah ini?' },
+    settings: { t: 'Tetapan', i: 'settings', sub: 'Pengguna, PIN, ambang dan sumber data', ceo: true }
   };
-  var NAVG = [['', ['home', 'routine', 'pay', 'soa', 'actions']], ['Modul', ['cash', 'sales', 'profit', 'books', 'planning', 'control']], ['Sistem', ['live', 'guide', 'settings']]];
+  /** Kumpulan menu ikut peranan: staf akaun nampak kerja dahulu; CEO/FM nampak ringkasan & laporan dahulu. */
+  function navGroups() {
+    var work = ['Kerja hari ini', ['routine', 'pay', 'soa', 'actions']], rep = ['Laporan kewangan', ['cash', 'sales', 'profit', 'books', 'planning', 'control']], sys = ['Bantuan', ['live', 'guide', 'settings']];
+    var r = S.me && S.me.role;
+    if (r === 'ACC') return [work, ['Gambaran', ['home']], rep, sys];
+    if (r === 'BM' || r === 'VIEW') return [['', ['home', 'actions']], rep, ['Supplier', ['soa']], sys];
+    return [['', ['home']], work, rep, sys];
+  }
+  function homePage() { return S.me && S.me.role === 'ACC' ? 'routine' : 'home'; }
+  function badgeFor(k) {
+    var red = S.home && S.home.actions && S.home.actions.counts ? num(S.home.actions.counts.r) : 0, rt = S.rt && S.rt.prog ? S.rt.prog.H : null, py = S.payT;
+    if (k === 'actions' && red) return '<span class="cnt">' + red + '</span>';
+    if (k === 'routine' && rt && rt.done < rt.all) return '<span class="cnt y">' + (rt.all - rt.done) + '</span>';
+    if (k === 'pay' && py && py.left) return '<span class="cnt g">' + py.left + '</span>';
+    return '';
+  }
+  function canSee(k) { return PG[k] && (!PG[k].ceo || S.me.role === 'CEO' || S.me.role === 'FM') && !(k === 'pay' && !S.me.canEdit && S.me.role !== 'CEO'); }
   function navHtml() {
-    var red = S.home && S.home.actions && S.home.actions.counts ? num(S.home.actions.counts.r) : 0, rt = S.rt && S.rt.prog ? S.rt.prog.H : null;
-    return NAVG.map(function (g) {
-      var items = g[1].filter(function (k) { return !PG[k].ceo || S.me.role === 'CEO' || S.me.role === 'FM'; }).map(function (k) {
-        var badge = k === 'actions' && red ? '<span class="cnt">' + red + '</span>' : k === 'routine' && rt && rt.done < rt.all ? '<span class="cnt y">' + (rt.all - rt.done) + '</span>' : '';
-        return '<button class="' + (S.page === k ? 'on' : '') + '" data-act="nav" data-p="' + k + '">' + ic(I[PG[k].i]) + '<span>' + PG[k].t + '</span>' + badge + '</button>';
+    return navGroups().map(function (g) {
+      var items = g[1].filter(canSee).map(function (k) {
+        return '<button class="' + (S.page === k ? 'on' : '') + '" data-act="nav" data-p="' + k + '">' + ic(I[PG[k].i]) + '<span>' + PG[k].t + '</span>' + badgeFor(k) + '</button>';
       }).join('');
-      return (g[0] ? '<div class="navh">' + g[0] + '</div>' : '') + items;
+      return items ? (g[0] ? '<div class="navh">' + g[0] + '</div>' : '') + items : '';
     }).join('');
   }
+  /** Bar bawah (telefon): 4 halaman paling kerap + Menu. */
+  function tabbarHtml() {
+    var r = S.me && S.me.role, list = r === 'ACC' ? ['routine', 'pay', 'soa', 'actions'] : r === 'BM' || r === 'VIEW' ? ['home', 'actions', 'sales', 'profit'] : ['home', 'routine', 'pay', 'soa'];
+    return '<nav class="tabbar">' + list.filter(canSee).map(function (k) { return '<button class="' + (S.page === k ? 'on' : '') + '" data-act="nav" data-p="' + k + '">' + ic(I[PG[k].i]) + '<span>' + PG[k].t + '</span>' + badgeFor(k) + '</button>'; }).join('') +
+      '<button data-act="openSide">' + ic(I.menu) + '<span>Menu</span></button></nav>';
+  }
+  function refreshNav() { var s = $('#side'); if (s) $('.nav', s).innerHTML = navHtml(); var t = $('.tabbar'); if (t) t.outerHTML = tabbarHtml(); }
   function sideCard() {
     var h = S.home; if (!h || !h.live) return '';
     var l = h.live;
@@ -333,17 +359,20 @@
       '<nav class="nav">' + navHtml() + '</nav>' + sideCard() + '</aside><div class="scrim" id="scrim" data-act="closeSide"></div>' +
       '<main class="main"><header class="top glass"><button class="iconbtn burger" data-act="openSide" aria-label="Menu">' + ic(I.menu) + '</button>' +
       '<div class="grow"><h1>' + esc(p.t) + '</h1><div class="sub">' + esc(p.sub) + '</div></div>' +
+      '<button class="pill srch" data-act="search" title="Cari halaman atau supplier ( / )">' + ic(I.search).replace('<svg', '<svg width="15" height="15"') + '<span class="hide-m">Cari…</span><kbd class="hide-m">/</kbd></button>' +
       (live ? '<span class="pill live hide-m">' + dot(live.status) + esc(unemo(live.status) || 'Live') + '</span>' : '') +
       '<button class="pill hide-m" data-act="refresh" title="Muat semula data dari sheet">' + ic(I.refresh).replace('<svg', '<svg width="15" height="15"') + 'Muat semula</button>' +
       '<button class="pill hide-m" data-act="print" title="Cetak / simpan PDF halaman ini">' + ic(I.print).replace('<svg', '<svg width="15" height="15"') + 'Cetak</button>' +
       '<button class="user" data-act="userMenu"><span class="av">' + esc(ini(S.me.name)) + '</span><b>' + esc(S.me.name) + '</b>' + ic(I.arrow).replace('<svg', '<svg width="14" height="14" style="transform:rotate(90deg)"') + '</button></header>' +
       '<div class="printh"><b>SOFWAH FIRAX</b> · ' + esc(p.t) + ' · dicetak ' + esc(new Date().toLocaleDateString('ms-MY')) + ' oleh ' + esc(S.me.name) + '</div>' +
-      '<div id="view" class="stack">' + (inner || '<div class="skel" style="height:300px"></div><div class="skel" style="height:220px"></div>') + '</div></main></div>';
+      (p.q ? '<div class="pageq">' + ic(I.guide).replace('<svg', '<svg width="14" height="14"') + 'Halaman ini menjawab: <b>' + esc(p.q) + '</b></div>' : '') +
+      '<div id="view" class="stack">' + (inner || '<div class="skel" style="height:300px"></div><div class="skel" style="height:220px"></div>') + '</div></main>' + tabbarHtml() + '</div>';
   }
-  function go(p) {
-    if (!PG[p]) p = 'home'; S.page = p; sset('firax.p', p); closeModal();
-    layout(); window.scrollTo(0, 0);
+  function go(p, quiet) {
+    if (!PG[p] || !canSee(p)) p = homePage(); S.page = p; sset('firax.p', p); closeModal();
     var R = { home: renderHome, actions: renderActions, settings: renderSettings, routine: renderRoutine, guide: renderGuide, pay: renderPay, soa: renderSoa }[p] || renderModule;
+    if (quiet && $('#view')) { var y = window.scrollY; R(); setTimeout(function () { window.scrollTo(0, y); }, 30); return; }
+    layout(); window.scrollTo(0, 0);
     R();
   }
   A.nav = function (el) { go(el.getAttribute('data-p')); };
@@ -351,8 +380,8 @@
   A.closeSide = function () { var s = $('#side'); if (s) s.classList.remove('open'); var c = $('#scrim'); if (c) c.classList.remove('open'); };
   A.refresh = function (el) {
     if (el) el.disabled = true; toast('Memuat semula dari sheet FIRAX…');
-    rpc('fxRefresh', [S.token]).then(function () { S.home = null; S.pages = {}; S.acts = null; S.rt = null; S.pay = null; return rpc('fxHome', [S.token]); })
-      .then(function (h) { S.home = h; go(S.page); toast('Data dikemas kini'); }).catch(function (e) { toast(e.error, true); if (el) el.disabled = false; });
+    rpc('fxRefresh', [S.token]).then(function () { dropKept(); S.home = null; S.pages = {}; S.acts = null; S.rt = null; S.pay = null; S.soa = null; return rpc('fxHome', [S.token]); })
+      .then(function (h) { S.home = h; keep('home', h); go(S.page); toast('Data dikemas kini'); prefetch(); }).catch(function (e) { toast(e.error, true); if (el) el.disabled = false; });
   };
   A.userMenu = function () {
     modal('<div style="display:flex;gap:12px;align-items:center"><span class="av">' + esc(ini(S.me.name)) + '</span><div><b>' + esc(S.me.name) + '</b><div class="note">' + esc(S.me.roleLabel) + '</div></div></div>' +
@@ -371,13 +400,76 @@
   };
   function view(html) { var v = $('#view'); if (v) v.innerHTML = html; }
   function fail(e) { view('<div class="glass pad"><div class="err">' + esc((e && e.error) || 'Gagal dimuatkan.') + '</div><div class="row-btn" style="justify-content:flex-start"><button class="btn" data-act="refresh">' + ic(I.refresh) + 'Cuba lagi</button></div></div>'); }
-  function needHome() { return S.home ? Promise.resolve(S.home) : rpc('fxHome', [S.token]).then(function (h) { S.home = h; return h; }); }
-  function needRt() { return S.rt ? Promise.resolve(S.rt) : rpc('fxRoutine', [S.token]).then(function (r) { S.rt = r; return r; }); }
+  function needHome() { return S.home ? Promise.resolve(S.home) : rpc('fxHome', [S.token]).then(function (h) { S.home = h; keep('home', h); return h; }); }
+  function needRt() { return S.rt ? Promise.resolve(S.rt) : rpc('fxRoutine', [S.token]).then(function (r) { S.rt = r; keep('rt', r); return r; }); }
+
+  /* ======================= LAJU: simpan sesi + pra-muat ======================= *
+   * 1) Setiap data yang dimuat disimpan dalam sessionStorage tab ini (hilang bila tab ditutup / log keluar),
+   *    jadi muat semula halaman terus papar tanpa menunggu pelayan.
+   * 2) Selepas log masuk, halaman lain dipra-muat satu demi satu semasa pengguna membaca — klik seterusnya serta-merta.
+   * 3) Data lama disegarkan di latar; halaman dilukis semula hanya jika data berubah. */
+  var CK = 'fxc:';
+  function keep(k, v) { try { sessionStorage.setItem(CK + k, JSON.stringify(v)); } catch (e) {} }
+  function kept(k) { try { var v = sessionStorage.getItem(CK + k); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
+  function dropKept() { try { Object.keys(sessionStorage).forEach(function (k) { if (k.indexOf(CK) === 0) sessionStorage.removeItem(k); }); } catch (e) {} }
+  function hydrate() {
+    if (!S.home) S.home = kept('home'); if (!S.rt) S.rt = kept('rt'); if (!S.acts) S.acts = kept('acts');
+    Object.keys(FXPAGES).forEach(function (k) { if (!S.pages[k]) { var d = kept('pg:' + k); if (d) S.pages[k] = d; } });
+    S.payT = kept('payT');
+  }
+  var FXPAGES = { cash: 1, sales: 1, profit: 1, books: 1, planning: 1, control: 1, live: 1 };
+  /** Segar semula halaman semasa di latar (stale-while-revalidate). */
+  function revalidate() {
+    var p = S.page, done = function () { if (S.page === p) go(p, true); refreshNav(); };
+    var cur = p === 'home' || p === 'guide' ? rpc('fxHome', [S.token]).then(function (h) { var ch = JSON.stringify(h) !== JSON.stringify(S.home); S.home = h; keep('home', h); return ch; })
+      : FXPAGES[p] ? rpc('fxPage', [S.token, p]).then(function (d) { var ch = JSON.stringify(d) !== JSON.stringify(S.pages[p]); S.pages[p] = d; keep('pg:' + p, d); return ch; })
+      : p === 'routine' ? rpc('fxRoutine', [S.token]).then(function (r) { var ch = JSON.stringify(r) !== JSON.stringify(S.rt); S.rt = r; keep('rt', r); return ch; })
+      : p === 'actions' ? rpc('fxActions', [S.token]).then(function (a) { var ch = JSON.stringify(a) !== JSON.stringify(S.acts); S.acts = a; keep('acts', a); return ch; }) : null;
+    if (cur) cur.then(function (ch) { if (ch) done(); }).catch(function () {});
+  }
+  /** Pra-muat halaman yang belum dimuat, satu demi satu (tidak membebankan pelayan). */
+  function prefetch() {
+    var q = [];
+    if (!S.rt) q.push(function () { return rpc('fxRoutine', [S.token]).then(function (r) { S.rt = r; keep('rt', r); refreshNav(); }); });
+    if (S.me.canEdit || S.me.role === 'CEO') q.push(function () { return rpc('fxPay', [S.token, '']).then(function (r) { S.pay = r; S.payD = r.ymd; S.payT = { left: r.sum.n - r.sum.nPaid, due: r.sum.due - r.sum.paid, day: r.day, ymd: r.ymd, wait: r.wait.n, waitAmt: r.wait.amt }; keep('payT', S.payT); refreshNav(); var td = $('.tdays'); if (td && S.home) td.outerHTML = todayStrip(S.home); }); });
+    if (!S.acts) q.push(function () { return rpc('fxActions', [S.token]).then(function (a) { S.acts = a; keep('acts', a); }); });
+    Object.keys(FXPAGES).forEach(function (k) { if (!S.pages[k] && canSee(k)) q.push(function () { return rpc('fxPage', [S.token, k]).then(function (d) { S.pages[k] = d; keep('pg:' + k, d); }); }); });
+    (function next() { var f = q.shift(); if (!f || !S.token) return; setTimeout(function () { f().catch(function () {}).then(next); }, 250); })();
+  }
+
+  /* ======================= Cari (halaman + supplier) ======================= */
+  A.search = function () {
+    modal('<div class="srchbox">' + ic(I.search) + '<input id="sq" placeholder="Cari halaman, supplier atau istilah… (cth. tunai, KTF, food cost)" autocomplete="off"></div><div id="sr" class="srres"></div><div class="note" style="margin-top:8px">↑ ↓ pilih · Enter buka · Esc tutup</div>');
+    var inp = $('#sq'); inp.focus(); S.si = 0;
+    var vend = S.soa && S.soa.vendors ? S.soa.vendors : kept('vendors');
+    if (!vend && canSee('soa')) rpc('fxSoa', [S.token, '', '', '']).then(function (r) { S.soa = r; keep('vendors', r.vendors); vend = r.vendors; draw(); }).catch(function () {});
+    function items() {
+      var q = inp.value.trim().toLowerCase(), out = [];
+      Object.keys(PG).filter(canSee).forEach(function (k) { var p = PG[k], hay = (p.t + ' ' + p.sub + ' ' + (p.q || '')).toLowerCase(); if (!q || hay.indexOf(q) >= 0) out.push({ t: 'p', k: k, l: p.t, s: p.q || p.sub }); });
+      if (q && vend) vend.filter(function (v) { return (v.key + ' ' + v.short + ' ' + v.kod).toLowerCase().indexOf(q) >= 0; }).slice(0, 8).forEach(function (v) { out.push({ t: 'v', k: v.key, l: v.short, s: 'Supplier · ' + (v.out ? 'terhutang RM' + fnum(v.out, 2) : 'tiada hutang') }); });
+      if (q && typeof GL !== 'undefined') GL.filter(function (g) { return (g.n + ' ' + g.a).toLowerCase().indexOf(q) >= 0; }).slice(0, 4).forEach(function (g) { out.push({ t: 'g', k: g.k, l: g.n, s: 'Istilah · ' + g.a.slice(0, 80) }); });
+      return out.slice(0, 14);
+    }
+    function draw() {
+      var it = items(); S.sItems = it; if (S.si >= it.length) S.si = 0;
+      $('#sr').innerHTML = it.length ? it.map(function (x, i) { return '<button class="sri' + (i === S.si ? ' on' : '') + '" data-act="searchGo" data-i="' + i + '"><span class="tag ' + x.t + '">' + (x.t === 'p' ? 'Halaman' : x.t === 'v' ? 'Supplier' : 'Istilah') + '</span><b>' + esc(x.l) + '</b><small>' + esc(x.s) + '</small></button>'; }).join('') : '<div class="empty">Tiada padanan</div>';
+    }
+    inp.oninput = function () { S.si = 0; draw(); };
+    inp.onkeydown = function (e) { if (e.key === 'ArrowDown') { S.si = Math.min(S.si + 1, S.sItems.length - 1); draw(); e.preventDefault(); } else if (e.key === 'ArrowUp') { S.si = Math.max(S.si - 1, 0); draw(); e.preventDefault(); } else if (e.key === 'Enter') { A.searchGo(null, S.si); } };
+    draw();
+  };
+  A.searchGo = function (el, idx) {
+    var x = S.sItems[el ? +el.getAttribute('data-i') : idx]; if (!x) return; closeModal();
+    if (x.t === 'p') go(x.k);
+    else if (x.t === 'v') { S.soaQ = { sup: x.k, from: '', to: '', p: 'ytd' }; go('soa'); }
+    else { S.gq = x.l; go('guide'); }
+  };
+  document.addEventListener('keydown', function (e) { if (e.key === '/' && S.token && !e.target.closest('input,textarea,select') && !$('#ov')) { e.preventDefault(); A.search(); } });
   A.print = function () { document.body.setAttribute('data-print', new Date().toLocaleString('ms-MY')); window.print(); };
 
   /* ======================= Utama (Home) ======================= */
   function renderHome() {
-    needHome().then(function (h) { var s = $('#side'); if (s) { $('.nav', s).innerHTML = navHtml(); } homeView(h); needRt().then(function () { var b = $('#rt-today'); if (b) b.outerHTML = rtToday(); var s2 = $('#side'); if (s2) $('.nav', s2).innerHTML = navHtml(); }).catch(function () {}); }).catch(fail);
+    needHome().then(function (h) { var s = $('#side'); if (s) { $('.nav', s).innerHTML = navHtml(); } homeView(h); needRt().then(function () { var b = $('#rt-today'); if (b) b.outerHTML = rtToday(); var td = $('.tdays'); if (td && S.home) td.outerHTML = todayStrip(S.home); var s2 = $('#side'); if (s2) $('.nav', s2).innerHTML = navHtml(); }).catch(function () {}); }).catch(fail);
   }
   function cardBy(h, re) { return (h.cards || []).filter(function (c) { return re.test(c.l); })[0] || { l: '', v: '—', n: '' }; }
   function kpiBy(h, re) { return (h.kpi || []).filter(function (k) { return re.test(k.k); })[0] || { k: '', v: '', t: '', lamp: '⚪' }; }
@@ -463,13 +555,28 @@
     var months = (h.months || []).filter(function (m) { return num(m.v); }).map(function (m) { return { l: m.m.replace(/ 20\d\d/, ''), v: num(m.v), t: num(m.t) }; });
     var mon = months.length ? '<section class="glass pad"><div class="sec-h"><h3>Jualan bulanan 2026</h3><span class="note">Jualan operasi (tanpa SST, delivery 50%)</span></div>' + barChart(months, { a: 'Jualan', b: 'Sasaran', w: 1200, h: 230 }) + '</section>' : '';
 
-    view(hero + pillars + fresh + todo + row7 + league + row5 + ins + mon + '<div class="note" style="text-align:center">Data pada ' + esc(h.asOf || '') + ' · dibaca terus daripada sheet FIRAX · ⚪ = menunggu data atau keputusan, bukan prestasi buruk</div>');
+    view(todayStrip(h) + hero + pillars + fresh + todo + row7 + league + row5 + ins + mon + '<div class="note" style="text-align:center">Data pada ' + esc(h.asOf || '') + ' · dibaca terus daripada sheet FIRAX · ⚪ = menunggu data atau keputusan, bukan prestasi buruk</div>');
   }
   /** Baris cawangan daripada jadual Dashboard (kepala dikesan ikut nama). */
   function branchRows(h) {
     var b = h.branches || {}, hd = b.head || [], ix = function (re) { for (var i = 0; i < hd.length; i++) if (re.test(hd[i])) return i; return -1; };
     var iS = ix(/^Jualan/), iP = ix(/% sasaran/), iF = ix(/Food cost/), iL = ix(/SPLH/);
     return (b.rows || []).filter(function (r) { return r[0] && !/Semua/.test(r[0]); }).map(function (r) { return { n: r[0], sales: num(r[iS]), pct: iP >= 0 ? pct(r[iP]) : null, fc: iF >= 0 ? r[iF] : '', splh: iL >= 0 ? r[iL] : '' }; });
+  }
+  /** Jalur "Untuk anda hari ini": 4 jubin boleh klik — jawapan segera "apa saya perlu buat". */
+  function todayStrip(h) {
+    var red = h.actions && h.actions.counts ? num(h.actions.counts.r) || 0 : 0, rt = S.rt && S.rt.prog ? S.rt.prog.H : null;
+    var t1 = '<button class="glass tday" data-act="nav" data-p="routine"><small>Tugas hari ini</small><b>' + (rt ? (rt.all - rt.done ? (rt.all - rt.done) + ' belum' : '✓ Selesai') : '…') + '</b><span>' + (rt ? rt.done + ' / ' + rt.all + ' siap' : 'memuat…') + '</span></button>';
+    var t3 = '<button class="glass tday ' + (red ? 'r' : 'g') + '" data-act="nav" data-p="actions"><small>Amaran merah</small><b>' + (red ? red + ' isu 🔴' : 'Tiada 🔴') + '</b><span>' + (red ? 'Lihat siapa uruskan' : 'Semua terkawal') + '</span></button>';
+    return '<section class="tdays">' + t1 + (canSee('pay') ? todayPay() : '') + t3 + (canSee('pay') ? todayWait() : '') + '</section>';
+  }
+  function todayPay() {
+    var p = S.payT;
+    return '<button class="glass tday" id="today-pay" data-act="nav" data-p="pay"><small>Bayaran · ' + esc(p ? p.day + ' ' + p.ymd.slice(8, 10) + '/' + p.ymd.slice(5, 7) : 'run seterusnya') + '</small><b>' + (p ? (p.left ? 'RM' + fnum(p.due, 0) : '✓ Selesai') : '…') + '</b><span>' + (p ? (p.left ? p.left + ' penerima perlu dibayar' : 'Semua sudah dibayar') : 'memuat…') + '</span></button>';
+  }
+  function todayWait() {
+    var p = S.payT;
+    return '<button class="glass tday' + (p && p.wait ? ' y' : '') + '" data-act="nav" data-p="pay"><small>Menunggu kelulusan</small><b>' + (p ? (p.wait ? p.wait + ' invois' : 'Tiada') : '…') + '</b><span>' + (p ? (p.wait ? 'RM' + fnum(p.waitAmt, 0) + ' · belum boleh dibayar' : 'Semua sudah disemak') : 'memuat…') + '</span></button>';
   }
   function rtToday() {
     var r = S.rt; if (!r) return '<div class="glass pad" id="rt-today"><div class="sec-h"><h3>Rutin hari ini</h3></div><div class="skel" style="height:150px"></div></div>';
@@ -537,7 +644,7 @@
   }
   function renderModule() {
     var key = S.page;
-    var got = S.pages[key] ? Promise.resolve(S.pages[key]) : rpc('fxPage', [S.token, key]).then(function (d) { S.pages[key] = d; return d; });
+    var got = S.pages[key] ? Promise.resolve(S.pages[key]) : rpc('fxPage', [S.token, key]).then(function (d) { S.pages[key] = d; keep('pg:' + key, d); return d; });
     got.then(function (d) { moduleView(d); }).catch(fail);
   }
   function moduleView(d) {
@@ -553,7 +660,7 @@
 
   /* ======================= Action Engine ======================= */
   function renderActions() {
-    var got = S.acts ? Promise.resolve(S.acts) : rpc('fxActions', [S.token]).then(function (a) { S.acts = a; return a; });
+    var got = S.acts ? Promise.resolve(S.acts) : rpc('fxActions', [S.token]).then(function (a) { S.acts = a; keep('acts', a); return a; });
     got.then(actionsView).catch(fail);
   }
   function actionsView(a) {
@@ -699,7 +806,7 @@
   function rmf(n) { return 'RM' + fnum(n, 2); }
   function renderPay(ymd) {
     var want = ymd || S.payD || '';
-    rpc('fxPay', [S.token, want]).then(function (r) { S.pay = r; S.payD = r.ymd; payView(r); }).catch(function (e) { if (want) { S.payD = ''; renderPay(); } else fail(e); });
+    rpc('fxPay', [S.token, want]).then(function (r) { S.pay = r; S.payD = r.ymd; if (!want || r.ymd === r.runs[0].ymd) { S.payT = { left: r.sum.n - r.sum.nPaid, due: r.sum.due - r.sum.paid, day: r.day, ymd: r.ymd, wait: r.wait.n, waitAmt: r.wait.amt }; keep('payT', S.payT); refreshNav(); } payView(r); }).catch(function (e) { if (want) { S.payD = ''; renderPay(); } else fail(e); });
   }
   function link(u, t) { return /^https?:\/\//.test(u || '') ? '<a href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(t) + '</a>' : '<span class="muted">' + esc(u ? 'WhatsApp' : '—') + '</span>'; }
   function payView(r) {
