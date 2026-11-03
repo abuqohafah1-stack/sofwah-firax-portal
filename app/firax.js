@@ -25,6 +25,9 @@
   function lamp(s) { s = String(s || ''); return /🔴/.test(s) ? 'r' : /🟡|🟠|⚠/.test(s) ? 'y' : /🟢|✅/.test(s) ? 'g' : /⚪|⏳/.test(s) ? 'w' : ''; }
   function unemo(s) { return String(s || '').replace(/[🔴🟡🟠🟢⚪✅⏳]️?\s*/g, '').trim(); }
   function dot(s) { var l = lamp(s); return l ? '<span class="dot ' + l + '" title="' + esc(s) + '"></span>' : ''; }
+  /** Paparan Inggeris bagi nilai status/hari daripada sheet (nilai asal dalam sheet tidak diubah). */
+  var EN = { 'Baru': 'New', 'Disemak': 'Reviewed', 'Diluluskan': 'Approved', 'Dibayar': 'Paid', 'Ditolak': 'Rejected', 'Direkod QuickBooks': 'Recorded in QuickBooks', 'Dalam tindakan': 'In progress', 'Selesai': 'Done', 'Ditutup': 'Closed', 'AHAD': 'Sunday', 'SELASA': 'Tuesday', 'RABU': 'Wednesday', 'AHAD & RABU': 'Sunday & Wednesday', 'Menunggu hantar': 'Email queued', 'DATA LEWAT': 'DATA LATE' };
+  function en(s) { s = String(s == null ? '' : s); var t = s.trim(); return EN[t] || (/^✅ Dihantar/.test(t) ? t.replace('Dihantar', 'Sent') : s); }
   function chip(s, cls) { return '<span class="chip ' + (cls || lamp(s) || '') + '">' + esc(unemo(s) || s) + '</span>'; }
   function field(label, html) { return '<div class="field"><label>' + esc(label) + '</label>' + html + '</div>'; }
   function val(id) { var e = document.getElementById(id); return e ? String(e.value).trim() : ''; }
@@ -58,20 +61,20 @@
   /* ======================= carta ======================= */
   /** Bar + garisan sasaran. data=[{l,v,t}] */
   function barChart(data, o) {
-    o = o || {}; var W = o.w || 640, H = o.h || 220, P = { l: 46, r: 12, t: 14, b: 28 }, n = data.length; if (!n) return '<div class="empty">Tiada data</div>';
+    o = o || {}; var W = o.w || 640, H = o.h || 220, P = { l: 46, r: 12, t: 14, b: 28 }, n = data.length; if (!n) return '<div class="empty">No data</div>';
     var max = Math.max.apply(null, data.map(function (d) { return Math.max(d.v || 0, d.t || 0); })) || 1; max *= 1.12;
     var bw = (W - P.l - P.r) / n, y = function (v) { return P.t + (H - P.t - P.b) * (1 - (v || 0) / max); };
     var s = '<div class="chart"><svg viewBox="0 0 ' + W + ' ' + H + '">';
-    for (var g = 0; g <= 4; g++) { var gv = max * g / 4, gy = y(gv); s += '<line x1="' + P.l + '" x2="' + (W - P.r) + '" y1="' + gy + '" y2="' + gy + '" stroke="rgba(140,255,190,.08)"/><text x="' + (P.l - 8) + '" y="' + (gy + 4) + '" fill="#7f9888" font-size="10" text-anchor="end">' + (gv >= 1e6 ? (gv / 1e6).toFixed(1) + 'j' : gv >= 1000 ? Math.round(gv / 1000) + 'k' : Math.round(gv)) + '</text>'; }
+    for (var g = 0; g <= 4; g++) { var gv = max * g / 4, gy = y(gv); s += '<line x1="' + P.l + '" x2="' + (W - P.r) + '" y1="' + gy + '" y2="' + gy + '" stroke="rgba(140,255,190,.08)"/><text x="' + (P.l - 8) + '" y="' + (gy + 4) + '" fill="#7f9888" font-size="10" text-anchor="end">' + (gv >= 1e6 ? (gv / 1e6).toFixed(1) + 'm' : gv >= 1000 ? Math.round(gv / 1000) + 'k' : Math.round(gv)) + '</text>'; }
     s += '<defs><linearGradient id="bg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3af08a"/><stop offset="1" stop-color="#0f6b34"/></linearGradient></defs>';
     data.forEach(function (d, i) {
       var x = P.l + i * bw + bw * .2, w = bw * .6, yy = y(d.v), hit = d.t ? d.v >= d.t : true;
-      s += '<rect x="' + x + '" y="' + yy + '" width="' + w + '" height="' + Math.max(0, H - P.b - yy) + '" rx="6" fill="' + (hit ? 'url(#bg1)' : 'rgba(255,181,71,.75)') + '"><title>' + esc(d.l) + ': RM' + fnum(d.v) + (d.t ? ' / sasaran RM' + fnum(d.t) : '') + '</title></rect>';
+      s += '<rect x="' + x + '" y="' + yy + '" width="' + w + '" height="' + Math.max(0, H - P.b - yy) + '" rx="6" fill="' + (hit ? 'url(#bg1)' : 'rgba(255,181,71,.75)') + '"><title>' + esc(d.l) + ': RM' + fnum(d.v) + (d.t ? ' / target RM' + fnum(d.t) : '') + '</title></rect>';
       s += '<text x="' + (x + w / 2) + '" y="' + (H - 9) + '" fill="#7f9888" font-size="10" text-anchor="middle">' + esc(d.l) + '</text>';
     });
     var tg = data.filter(function (d) { return d.t; });
     if (tg.length) s += '<polyline fill="none" stroke="#ffda7c" stroke-width="2" stroke-dasharray="5 4" points="' + data.map(function (d, i) { return d.t ? (P.l + i * bw + bw / 2) + ',' + y(d.t) : ''; }).filter(Boolean).join(' ') + '"/>';
-    s += '</svg><div class="legend"><span><i style="background:#2fe07a"></i>' + esc(o.a || 'Sebenar') + '</span>' + (tg.length ? '<span><i style="background:#ffda7c"></i>' + esc(o.b || 'Sasaran') + '</span><span><i style="background:#ffb547"></i>Bawah sasaran</span>' : '') + '</div></div>';
+    s += '</svg><div class="legend"><span><i style="background:#2fe07a"></i>' + esc(o.a || 'Actual') + '</span>' + (tg.length ? '<span><i style="background:#ffda7c"></i>' + esc(o.b || 'Target') + '</span><span><i style="background:#ffb547"></i>Below target</span>' : '') + '</div></div>';
     return s;
   }
   function ring(p, label) {
@@ -106,88 +109,88 @@
   /* ======================= API ======================= */
   function rpc(fn, args) {
     return new Promise(function (res, rej) {
-      if (!window.google || !google.script) return rej({ error: 'Buka FIRAX melalui pautan rasmi (firax.sofwah.my).' });
+      if (!window.google || !google.script) return rej({ error: 'Open FIRAX via the official link (firax.sofwah.my).' });
       var r = google.script.run.withSuccessHandler(function (x) {
         if (x && x.ok) return res(x.data);
         if (x && x.code === 'AUTH' && S.token) { sset(TK, null); S.token = null; dropKept(); renderLogin(x.error); }
         if (x && x.code === 'PINCHANGE' && S.token && S.me) { S.me.mustChange = true; forcePin(); }
-        rej(x || { error: 'Tiada jawapan daripada pelayan.' });
-      }).withFailureHandler(function (e) { rej({ error: (e && e.message) || 'Masalah sambungan. Cuba lagi.' }); });
+        rej(x || { error: 'No response from the server.' });
+      }).withFailureHandler(function (e) { rej({ error: (e && e.message) || 'Connection problem. Please try again.' }); });
       r[fn].apply(r, args || []);
     });
   }
 
-  /* ======================= Kamus & panduan (untuk pasukan yang baru) ======================= */
-  /** k: kunci · n: nama · m: regex pengesan pada label/kepala jadual · a: apa itu · f: cara kira · s: julat sihat (amalan industri) · w: siapa bertindak */
+  /* ======================= Glossary & guides (for new team members) ======================= */
+  /** k: key · n: name · m: regex matching a label/table header · a: meaning · f: formula · s: healthy range (industry practice) · w: owner */
   var GL = [
-    { k: 'jualan', n: 'Jualan operasi', m: /^jualan( operasi| okt| nov| bulan| sehari| 20| minggu)?\b|jualan \(rm\)|jualan 2026/i, a: 'Jualan bersih yang dipakai untuk sasaran team: jualan FeedMe tolak SST, dan jualan delivery dikira 50% (kerana platform ambil komisen).', f: 'Jualan Nett − SST, delivery × 50%', s: 'Capai ≥ 100% sasaran bulanan. 🟡 90–99%, 🔴 bawah 90%.', w: 'BM + Pengurus Operasi' },
-    { k: 'sasaran', n: '% capai sasaran', m: /% (capai|sasaran)|sasaran 2027/i, a: 'Berapa banyak sasaran jualan sudah dicapai.', f: 'Jualan sebenar ÷ sasaran × 100%', s: 'Sasaran 2027 Sofwah: RM10.9 juta (±RM30k sehari).', w: 'CEO + BM' },
-    { k: 'aliran', n: 'Aliran tunai bersih', m: /aliran (tunai|bersih)/i, a: 'Wang yang betul-betul masuk ke bank tolak wang yang keluar dalam tempoh itu. Ini bukan untung: untung boleh positif sedangkan tunai berkurang.', f: 'Terimaan bank − bayaran bank', s: 'Positif setiap bulan. Negatif 2 bulan berturut = amaran.', w: 'Finance Manager' },
-    { k: 'runway', n: 'Runway tunai', m: /runway/i, a: 'Berapa minggu syarikat boleh terus membayar kos operasi dengan tunai sedia ada, jika tiada wang masuk.', f: 'Baki semua akaun bank ÷ purata opex seminggu', s: 'Sihat ≥ 8 minggu (2 bulan). 🔴 bawah 2 minggu.', w: 'CEO + Finance Manager' },
-    { k: 'baki', n: 'Baki bank', m: /^baki (semua|bank)/i, a: 'Jumlah wang dalam semua akaun bank syarikat pada tarikh penyata terakhir.', f: 'Baki awal + terimaan − bayaran', s: 'Sentiasa melebihi opex 8 minggu.', w: 'Finance Manager' },
-    { k: 'rekon', n: 'Rekon (rekonsiliasi) harian', m: /rekon|hari 🟢|padan/i, a: 'Memadankan jualan yang direkod di POS (FeedMe) dengan wang yang benar-benar masuk ke bank, ikut kaedah bayaran (QR, kad, online).', f: 'Hari padan ÷ hari yang ada penyata bank', s: 'Sofwah: transaksi & rekon dikemas kini setiap Ahad untuk 7 hari lepas; sasaran 100% hari padan atau ada sebab bertulis.', w: 'Staf Akaun + BM' },
-    { k: 'short', n: 'SHORT / LEBIH', m: /short|lebih \(|beza \(rm\)|jurang/i, a: 'SHORT: wang masuk bank KURANG daripada jualan. LEBIH: wang masuk LEBIH. Selalunya disebabkan masa settlement kad atau QR masuk akaun lain.', f: 'Diterima bank − jangkaan dari POS', s: 'Beza ≤ toleransi (RM50) atau ada sebab bertulis.', w: 'Staf Akaun' },
-    { k: 'payout', n: 'Payout delivery', m: /payout|potongan/i, a: 'Wang yang dibayar oleh Grab, foodpanda atau Shopee kepada Sofwah selepas mereka tolak komisen, iklan dan diskaun.', f: 'Jualan platform − potongan platform', s: 'Payout masuk bank ikut jadual platform; beza dengan jangkaan ≤ 3%.', w: 'PIC Delivery + Staf Akaun' },
-    { k: 'ketepatan', n: 'Ketepatan POS delivery', m: /ketepatan/i, a: 'Adakah setiap pesanan delivery ditekan di FeedMe? Jika POS rekod kurang daripada portal, jualan dan SST dalam laporan terkurang.', f: 'Jualan delivery di POS ÷ jualan di portal platform', s: '99% hingga 101%. Bawah 97% atau atas 103% = 🔴.', w: 'PIC Delivery' },
-    { k: 'ap', n: 'AP (akaun belum bayar)', m: /\bap\b|belum dibayar|tertunggak|aging|tuntutan/i, a: 'Invois supplier yang sudah diterima tetapi belum dibayar. "Tertunggak" bermaksud sudah melepasi terma bayaran.', f: 'Jumlah invois terbuka; umur = hari sejak tarikh invois', s: '≥ 95% invois dibayar dalam terma; tiada invois lebih 60 hari.', w: 'Finance Manager + Staf Akaun' },
-    { k: 'pnl', n: 'Untung Rugi (P&L)', m: /p&l|untung (kendalian|bersih|rugi)|untung bulanan/i, a: 'Laporan sama ada perniagaan untung: jualan tolak semua kos. P&L pengurusan FIRAX ikut tarikh wang keluar bank (asas tunai); P&L rasmi QuickBooks ikut asas akruan.', f: 'Jualan − kos bahan − kos staf − kos operasi', s: 'Untung bersih restoran lazimnya 5% hingga 15% jualan.', w: 'Finance Manager → CEO' },
-    { k: 'margin', n: 'Margin bersih', m: /margin (bersih|kendalian)/i, a: 'Berapa sen untung daripada setiap RM1 jualan selepas semua kos.', f: 'Untung bersih ÷ jualan × 100%', s: 'Restoran: 5% hingga 15% (10% dianggap baik). Angka 60%+ biasanya bermaksud kos belum lengkap.', w: 'CEO' },
-    { k: 'food', n: 'Food cost %', m: /food cost|kos bahan|modal \/ plate/i, a: 'Peratus jualan yang dibelanjakan untuk bahan mentah. Kos terbesar restoran selepas gaji.', f: 'Kos bahan ÷ jualan × 100%', s: 'Restoran lazim: 28% hingga 35%. Atas 38% = margin tertekan.', w: 'Ops / Chef + Procurement' },
-    { k: 'prime', n: 'Prime cost', m: /prime cost/i, a: 'Gabungan dua kos terbesar restoran: bahan + staf. Ukuran utama kawalan kos dalam industri F&B.', f: '(Kos bahan + kos staf) ÷ jualan', s: 'Sasaran industri ≤ 60% hingga 65% jualan.', w: 'CEO + Ops' },
-    { k: 'scor', n: 'SCOR (kos staf ÷ jualan)', m: /scor|kos staf/i, a: 'Peratus jualan yang digunakan untuk gaji dan caruman staf.', f: 'Kos staf (payroll) ÷ jualan × 100%', s: 'Restoran lazim: 25% hingga 35%.', w: 'HR + BM' },
-    { k: 'splh', n: 'SPLH', m: /splh/i, a: 'Sales Per Labour Hour: jualan yang dihasilkan bagi setiap jam kerja seorang staf. Ukuran produktiviti dan susunan shift.', f: 'Jualan ÷ jumlah jam kerja staf', s: 'Sasaran Sofwah: RM60 sejam. Terlalu tinggi = staf tidak cukup (servis jatuh).', w: 'HR + BM' },
-    { k: 'breakeven', n: 'Breakeven', m: /breakeven|pulang modal/i, a: 'Jualan minimum supaya tidak untung dan tidak rugi. Di bawah breakeven, setiap hari menambah kerugian.', f: 'Kos tetap ÷ margin sumbangan %', s: 'Capai ≥ 120% breakeven (ada ruang selamat).', w: 'BM + CEO' },
-    { k: 'sumbangan', n: 'Margin sumbangan', m: /margin sumbangan/i, a: 'Baki setiap RM1 jualan selepas kos berubah (bahan, pembungkusan, caj kad) yang digunakan untuk menampung kos tetap.', f: '(Jualan − kos berubah) ÷ jualan', s: 'Lebih tinggi lebih baik; restoran lazim 55% hingga 70%.', w: 'Finance' },
-    { k: 'tetap', n: 'Kos tetap / kos berubah', m: /kos (tetap|berubah)/i, a: 'Kos tetap tidak berubah walaupun jualan naik turun (sewa, gaji tetap). Kos berubah naik ikut jualan (bahan, pembungkusan).', f: '—', s: '—', w: 'Finance' },
-    { k: 'aov', n: 'AOV (purata nilai bil)', m: /aov|purata \/ bil/i, a: 'Purata ringgit yang dibelanjakan setiap bil.', f: 'Jualan ÷ bilangan bil', s: 'Naikkan dengan set, add-on dan upsell.', w: 'BM + Marketing' },
-    { k: 'sst', n: 'SST', m: /\bsst\b/i, a: 'Cukai yang dikutip daripada pelanggan bagi pihak kerajaan. Ia BUKAN pendapatan syarikat dan mesti dibayar melalui SST-02.', f: 'Ikut kadar SST semasa atas jualan bercukai', s: 'Asingkan ke akaun simpanan setiap minggu.', w: 'Finance Manager' },
-    { k: 'einvois', n: 'e-Invois LHDN', m: /e-invois/i, a: 'Invois elektronik yang dihantar ke LHDN melalui MyInvois. Jualan runcit (B2C) boleh disatukan setiap bulan.', f: '—', s: 'Hantar e-Invois disatukan sebelum 7hb bulan berikutnya.', w: 'Staf Akaun' },
-    { k: 'kunci', n: 'Kunci kira-kira (Balance Sheet)', m: /kunci kira|aset|liabiliti|ekuiti/i, a: 'Gambaran pada satu tarikh: apa syarikat miliki (aset), apa syarikat berhutang (liabiliti) dan baki milik pemegang saham (ekuiti).', f: 'Aset = Liabiliti + Ekuiti', s: 'Aset semasa ≥ 1.2 × liabiliti semasa.', w: 'Finance Manager' },
-    { k: 'akruan', n: 'Asas tunai lawan akruan', m: /akruan|asas tunai/i, a: 'Asas tunai: kos dikira bila wang keluar. Akruan (standard perakaunan MPERS/MFRS): kos dikira pada bulan ia berlaku walaupun belum dibayar. Akruan lebih tepat untuk P&L bulanan.', f: '—', s: 'Laporan rasmi mesti asas akruan.', w: 'Finance Manager' },
-    { k: 'susut', n: 'Susut nilai', m: /susut nilai/i, a: 'Kos aset (dapur, renovasi, peralatan) diagih sepanjang hayatnya, bukan sekali gus.', f: 'Kos aset ÷ tahun hayat ÷ 12 sebulan', s: 'Direkod setiap bulan semasa tutup buku.', w: 'Finance Manager' },
-    { k: 'tutup', n: 'Tutup buku', m: /tutup buku/i, a: 'Proses hujung bulan untuk memastikan semua transaksi lengkap, betul dan dikunci sebelum laporan dikeluarkan.', f: 'Hari bekerja dari hujung bulan hingga buku dikunci', s: 'Amalan terbaik: 3 hingga 5 hari bekerja.', w: 'Finance Manager' },
-    { k: 'payback', n: 'Payback & ROI', m: /payback|roi/i, a: 'Payback: berapa bulan untuk dapat balik modal pelaburan. ROI: pulangan setahun berbanding modal.', f: 'Payback = pelaburan ÷ untung bulanan · ROI = untung setahun ÷ pelaburan', s: 'Cawangan F&B: payback ≤ 24 bulan dianggap baik.', w: 'CEO + Lembaga Penasihat' },
-    { k: 'void', n: 'Void & diskaun manual', m: /void|diskaun manual|tukar (kaedah )?bayaran/i, a: 'Bil yang dibatalkan atau diberi potongan secara manual. Kawalan penting untuk elak salah guna.', f: 'Nilai void ÷ jualan', s: 'Bawah 0.5% jualan.', w: 'BM + Finance' },
-    { k: 'kpi', n: 'Lampu status', m: /^lampu|^status$/i, a: '🟢 OK · 🟡 pantau · 🔴 tindakan sekarang · ⚪ menunggu data atau keputusan (BUKAN prestasi buruk).', f: '—', s: '—', w: '—' },
-    { k: 'skor', n: 'Skor Kesihatan Kewangan', m: /skor kesihatan/i, a: 'Gabungan 10 KPI FIRAX menjadi satu nombor 0 hingga 100. Hanya KPI yang datanya lengkap dikira.', f: 'Purata KPI: 🟢 = 100, 🟡 = 60, 🔴 = 20 (⚪ tidak dikira)', s: '80+ sihat · 60–79 stabil · 40–59 perlu perhatian · bawah 40 kritikal.', w: 'CEO' },
-    { k: 'yakin', n: 'Keyakinan Data', m: /keyakinan data/i, a: 'Berapa peratus KPI yang datanya lengkap. Skor rendah bermaksud keputusan masih berasaskan anggaran.', f: 'KPI berlampu 🟢🟡🔴 ÷ 10 KPI', s: 'Sasaran ≥ 90%.', w: 'Finance Manager' }
+    { k: 'jualan', n: 'Operational sales', m: /^jualan( operasi| okt| nov| bulan| sehari| 20| minggu)?\b|jualan \(rm\)|jualan 2026/i, a: 'Net sales used for team targets: FeedMe sales less SST, with delivery sales counted at 50% (because the platforms take commission).', f: 'Net sales − SST, delivery × 50%', s: 'Reach ≥ 100% of the monthly target. 🟡 90–99%, 🔴 below 90%.', w: 'BM + Operations Manager' },
+    { k: 'sasaran', n: '% of target achieved', m: /% (capai|sasaran)|sasaran 2027/i, a: 'How much of the sales target has been achieved.', f: 'Actual sales ÷ target × 100%', s: 'Sofwah 2027 target: RM10.9 million (about RM30k a day).', w: 'CEO + BM' },
+    { k: 'aliran', n: 'Net cash flow', m: /aliran (tunai|bersih)/i, a: 'Money actually received into the bank less money paid out in the period. This is not profit: profit can be positive while cash falls.', f: 'Bank receipts − bank payments', s: 'Positive every month. Negative for 2 consecutive months = warning.', w: 'Finance Manager' },
+    { k: 'runway', n: 'Cash runway', m: /runway/i, a: 'How many weeks the company can keep paying operating costs from existing cash if no money comes in.', f: 'Balance of all bank accounts ÷ average weekly opex', s: 'Healthy ≥ 8 weeks (2 months). 🔴 below 2 weeks.', w: 'CEO + Finance Manager' },
+    { k: 'baki', n: 'Bank balance', m: /^baki (semua|bank)/i, a: 'Total money in all company bank accounts at the date of the latest statement.', f: 'Opening balance + receipts − payments', s: 'Always above 8 weeks of opex.', w: 'Finance Manager' },
+    { k: 'rekon', n: 'Daily reconciliation', m: /rekon|hari 🟢|padan/i, a: 'Matching sales recorded in the POS (FeedMe) to money actually received in the bank, by payment method (QR, card, online).', f: 'Matched days ÷ days with a bank statement', s: 'Sofwah: transactions and reconciliation are updated every Sunday for the previous 7 days; target 100% matched days or a written reason.', w: 'Accounts Staff + BM' },
+    { k: 'short', n: 'SHORT / OVER', m: /short|lebih \(|beza \(rm\)|jurang/i, a: 'SHORT: money received in the bank is LESS than sales. OVER: money received is MORE. Usually caused by card settlement timing or QR payments landing in another account.', f: 'Received in bank − expected from POS', s: 'Difference ≤ tolerance (RM50) or a written reason.', w: 'Accounts Staff' },
+    { k: 'payout', n: 'Delivery payout', m: /payout|potongan/i, a: 'Money paid by Grab, foodpanda or Shopee to Sofwah after they deduct commission, ads and discounts.', f: 'Platform sales − platform deductions', s: 'Payout reaches the bank on the platform schedule; difference from expected ≤ 3%.', w: 'Delivery Owner + Accounts Staff' },
+    { k: 'ketepatan', n: 'Delivery POS accuracy', m: /ketepatan/i, a: 'Is every delivery order keyed into FeedMe? If the POS records less than the portal, sales and SST in reports are understated.', f: 'Delivery sales in POS ÷ sales in platform portal', s: '99% to 101%. Below 97% or above 103% = 🔴.', w: 'Delivery Owner' },
+    { k: 'ap', n: 'AP (accounts payable)', m: /\bap\b|belum dibayar|tertunggak|aging|tuntutan/i, a: 'Supplier invoices received but not yet paid. "Overdue" means past the credit terms.', f: 'Total open invoices; age = days since invoice date', s: '≥ 95% of invoices paid within terms; no invoice over 60 days.', w: 'Finance Manager + Accounts Staff' },
+    { k: 'pnl', n: 'Profit & Loss (P&L)', m: /p&l|untung (kendalian|bersih|rugi)|untung bulanan/i, a: 'Report of whether the business is profitable: sales less all costs. The FIRAX management P&L follows the date money leaves the bank (cash basis); the official QuickBooks P&L is on an accrual basis.', f: 'Sales − food cost − labour cost − operating costs', s: 'Restaurant net profit is typically 5% to 15% of sales.', w: 'Finance Manager → CEO' },
+    { k: 'margin', n: 'Net margin', m: /margin (bersih|kendalian)/i, a: 'How many sen of profit each RM1 of sales leaves after all costs.', f: 'Net profit ÷ sales × 100%', s: 'Restaurants: 5% to 15% (10% is considered good). A figure of 60%+ usually means costs are incomplete.', w: 'CEO' },
+    { k: 'food', n: 'Food cost %', m: /food cost|kos bahan|modal \/ plate/i, a: 'Percentage of sales spent on raw ingredients. The largest restaurant cost after wages.', f: 'Food cost ÷ sales × 100%', s: 'Typical restaurant: 28% to 35%. Above 38% = margin under pressure.', w: 'Ops / Chef + Procurement' },
+    { k: 'prime', n: 'Prime cost', m: /prime cost/i, a: 'The two largest restaurant costs combined: food + labour. The key cost-control measure in F&B.', f: '(Food cost + labour cost) ÷ sales', s: 'Industry target ≤ 60% to 65% of sales.', w: 'CEO + Ops' },
+    { k: 'scor', n: 'SCOR (labour cost ÷ sales)', m: /scor|kos staf/i, a: 'Percentage of sales spent on staff wages and contributions.', f: 'Labour cost (payroll) ÷ sales × 100%', s: 'Typical restaurant: 25% to 35%.', w: 'HR + BM' },
+    { k: 'splh', n: 'SPLH', m: /splh/i, a: 'Sales Per Labour Hour: sales generated per staff working hour. A measure of productivity and shift planning.', f: 'Sales ÷ total staff hours worked', s: 'Sofwah target: RM60 per hour. Too high = understaffed (service suffers).', w: 'HR + BM' },
+    { k: 'breakeven', n: 'Breakeven', m: /breakeven|pulang modal/i, a: 'Minimum sales to make neither a profit nor a loss. Below breakeven, every day adds to the loss.', f: 'Fixed costs ÷ contribution margin %', s: 'Reach ≥ 120% of breakeven (a safety buffer).', w: 'BM + CEO' },
+    { k: 'sumbangan', n: 'Contribution margin', m: /margin sumbangan/i, a: 'What remains of each RM1 of sales after variable costs (ingredients, packaging, card fees) to cover fixed costs.', f: '(Sales − variable costs) ÷ sales', s: 'Higher is better; typical restaurant 55% to 70%.', w: 'Finance' },
+    { k: 'tetap', n: 'Fixed vs variable costs', m: /kos (tetap|berubah)/i, a: 'Fixed costs do not change as sales rise or fall (rent, fixed salaries). Variable costs rise with sales (ingredients, packaging).', f: '—', s: '—', w: 'Finance' },
+    { k: 'aov', n: 'AOV (average order value)', m: /aov|purata \/ bil/i, a: 'Average ringgit spent per bill.', f: 'Sales ÷ number of bills', s: 'Increase with sets, add-ons and upselling.', w: 'BM + Marketing' },
+    { k: 'sst', n: 'SST', m: /\bsst\b/i, a: 'Tax collected from customers on behalf of the government. It is NOT company income and must be paid through SST-02.', f: 'Current SST rate on taxable sales', s: 'Set aside in a savings account every week.', w: 'Finance Manager' },
+    { k: 'einvois', n: 'LHDN e-Invoice', m: /e-invois/i, a: 'Electronic invoice submitted to LHDN through MyInvois. Retail (B2C) sales may be consolidated monthly.', f: '—', s: 'Submit the consolidated e-Invoice before the 7th of the following month.', w: 'Accounts Staff' },
+    { k: 'kunci', n: 'Balance Sheet', m: /kunci kira|aset|liabiliti|ekuiti/i, a: 'A snapshot at one date: what the company owns (assets), what it owes (liabilities) and the balance belonging to shareholders (equity).', f: 'Assets = Liabilities + Equity', s: 'Current assets ≥ 1.2 × current liabilities.', w: 'Finance Manager' },
+    { k: 'akruan', n: 'Cash vs accrual basis', m: /akruan|asas tunai/i, a: 'Cash basis: costs are recognised when money is paid. Accrual (MPERS/MFRS accounting standards): costs are recognised in the month incurred, even if unpaid. Accrual is more accurate for the monthly P&L.', f: '—', s: 'Official reports must be on an accrual basis.', w: 'Finance Manager' },
+    { k: 'susut', n: 'Depreciation', m: /susut nilai/i, a: 'The cost of an asset (kitchen, renovation, equipment) spread over its useful life, not expensed at once.', f: 'Asset cost ÷ useful life (years) ÷ 12 per month', s: 'Recorded every month during month-end close.', w: 'Finance Manager' },
+    { k: 'tutup', n: 'Month-end close', m: /tutup buku/i, a: 'The month-end process to ensure all transactions are complete, correct and locked before reports are issued.', f: 'Working days from month end until the books are locked', s: 'Best practice: 3 to 5 working days.', w: 'Finance Manager' },
+    { k: 'payback', n: 'Payback & ROI', m: /payback|roi/i, a: 'Payback: months needed to recover the investment. ROI: annual return relative to the investment.', f: 'Payback = investment ÷ monthly profit · ROI = annual profit ÷ investment', s: 'F&B branch: payback ≤ 24 months is considered good.', w: 'CEO + Board of Advisors' },
+    { k: 'void', n: 'Voids & manual discounts', m: /void|diskaun manual|tukar (kaedah )?bayaran/i, a: 'Bills cancelled or discounted manually. A key control to prevent misuse.', f: 'Void value ÷ sales', s: 'Below 0.5% of sales.', w: 'BM + Finance' },
+    { k: 'kpi', n: 'Status lamp', m: /^lampu|^status$/i, a: '🟢 Healthy · 🟡 Watch · 🔴 Act now · ⚪ Awaiting data or a decision (NOT poor performance).', f: '—', s: '—', w: '—' },
+    { k: 'skor', n: 'Financial Health Score', m: /skor kesihatan/i, a: 'Combines the 10 FIRAX KPIs into one number from 0 to 100. Only KPIs with complete data are counted.', f: 'KPI average: 🟢 = 100, 🟡 = 60, 🔴 = 20 (⚪ not counted)', s: '80+ healthy · 60–79 stable · 40–59 needs attention · below 40 critical.', w: 'CEO' },
+    { k: 'yakin', n: 'Data confidence', m: /keyakinan data/i, a: 'Percentage of KPIs with complete data. A low score means decisions still rest on estimates.', f: 'KPIs with a 🟢🟡🔴 lamp ÷ 10 KPIs', s: 'Target ≥ 90%.', w: 'Finance Manager' }
   ];
   var GLK = {}; GL.forEach(function (g) { GLK[g.k] = g; });
   function termFor(label) { label = String(label || ''); if (!label || label.length > 70) return null; for (var i = 0; i < GL.length; i++) if (GL[i].m.test(label)) return GL[i]; return null; }
-  function helpBtn(label, key) { var g = key ? GLK[key] : termFor(label); return g ? '<button class="hlp" data-act="help" data-k="' + g.k + '" aria-label="Apa maksud ' + esc(g.n) + '" title="Apa maksud ini?">?</button>' : ''; }
+  function helpBtn(label, key) { var g = key ? GLK[key] : termFor(label); return g ? '<button class="hlp" data-act="help" data-k="' + g.k + '" aria-label="What does ' + esc(g.n) + ' mean" title="What does this mean?">?</button>' : ''; }
   function glossHtml(g) {
-    return '<div class="gl-i"><div class="kicker">Kamus FIRAX</div><h3 style="margin:6px 0 12px">' + esc(g.n) + '</h3>' +
-      '<div class="gl-row"><b>Apa itu</b><p>' + esc(g.a) + '</p></div>' +
-      (g.f !== '—' ? '<div class="gl-row"><b>Cara kira</b><p class="mono">' + esc(g.f) + '</p></div>' : '') +
-      (g.s !== '—' ? '<div class="gl-row ok"><b>Julat sihat</b><p>' + esc(g.s) + '</p></div>' : '') +
-      (g.w !== '—' ? '<div class="gl-row"><b>Siapa bertindak</b><p>' + esc(g.w) + '</p></div>' : '') + '</div>';
+    return '<div class="gl-i"><div class="kicker">FIRAX Glossary</div><h3 style="margin:6px 0 12px">' + esc(g.n) + '</h3>' +
+      '<div class="gl-row"><b>Meaning</b><p>' + esc(g.a) + '</p></div>' +
+      (g.f !== '—' ? '<div class="gl-row"><b>Formula</b><p class="mono">' + esc(g.f) + '</p></div>' : '') +
+      (g.s !== '—' ? '<div class="gl-row ok"><b>Healthy range</b><p>' + esc(g.s) + '</p></div>' : '') +
+      (g.w !== '—' ? '<div class="gl-row"><b>Owner</b><p>' + esc(g.w) + '</p></div>' : '') + '</div>';
   }
-  A.help = function (el) { var g = GLK[el.getAttribute('data-k')]; if (g) modal(glossHtml(g) + '<div class="row-btn"><button class="btn sm" data-act="nav" data-p="guide">Buka Kamus penuh</button><button class="btn pri sm" data-act="closeModal">Faham</button></div>'); };
+  A.help = function (el) { var g = GLK[el.getAttribute('data-k')]; if (g) modal(glossHtml(g) + '<div class="row-btn"><button class="btn sm" data-act="nav" data-p="guide">Open full glossary</button><button class="btn pri sm" data-act="closeModal">Got it</button></div>'); };
 
-  /** Panduan ringkas setiap modul: apa halaman ini, nombor yang paling penting, apa perlu dibuat. */
+  /** Short guide for each module: what the page is, the key number, what to do. */
   var MG = {
-    'M1 Nadi Tunai': ['Berapa wang syarikat dalam bank sekarang dan berapa lama ia cukup.', 'Runway tunai (minggu) dan aliran tunai bersih bulan ini.', 'Jika ⚪: muat naik penyata bank dan isi baki awal akaun. Jika 🔴: rancang pindahan dana atau tangguh bayaran bukan kritikal.'],
-    'M9 Bajet & Ramalan': ['Jualan setiap bulan lawan sasaran, dan sasaran 2027 ikut cawangan.', '% capai dan perubahan berbanding bulan lepas.', 'Bulan di bawah 90% sasaran: minta pelan tindakan daripada BM cawangan itu.'],
-    'M2 Rekon Harian': ['Adakah jualan setiap hari benar-benar masuk ke bank.', 'Hari 🔴 SHORT tanpa catatan dan hari ⚪ tiada penyata.', 'Staf Akaun tulis sebab setiap hari 🔴 dan muat naik penyata yang hilang.'],
-    'M3 Payout Delivery': ['Adakah Grab, foodpanda dan Shopee bayar dengan betul, dan adakah POS rekod semua pesanan.', 'Ketepatan POS (sasaran 99%) dan jurang payout.', 'PIC Delivery pastikan setiap pesanan ditekan di FeedMe dan audit payout setiap Isnin.'],
-    'M5 P&L Cawangan': ['Untung atau rugi setiap cawangan bulan ini (asas tunai).', 'Margin bersih dan lampu. ⚪ bermaksud kos belum lengkap, jangan buat keputusan dahulu.', 'Lengkapkan kategori bayaran bank dan payroll sebelum P&L dibentang.'],
-    'M7 Food Cost': ['Kos bahan berbanding jualan, dan menu mana untung atau rugi.', 'Food cost % (industri 28% hingga 35%) dan menu belum berkos.', 'Isi modal per plate 20 menu terlaris dahulu.'],
-    'M8 Tenaga Kerja': ['Kos staf dan produktiviti setiap cawangan dan slot waktu.', 'SPLH (sasaran RM60) dan slot 🔴 kekurangan staf.', 'HR + BM alih staf dari slot berlebihan ke slot kekurangan sebelum menambah pekerja.'],
-    'M4 AP & Opex': ['Invois supplier yang belum dibayar dan umurnya.', 'Tertunggak dan invois lebih 60 hari.', 'Semak invois baharu setiap hari; bayar ikut run Ahad & Rabu (supplier) dan Selasa (HR) di halaman Bayaran.'],
-    'M13 QB Kewangan': ['P&L dan kunci kira-kira rasmi daripada QuickBooks, dengan penilaian juruaudit.', 'Untung bersih versi QB lawan versi dilaras juruaudit.', 'FM selesaikan pelarasan sebelum laporan digunakan untuk bank atau LHDN.'],
-    'M14 Audit Pendapatan': ['Perbandingan jualan FeedMe (POS) dengan rekod QuickBooks dan senarai penemuan audit.', 'Penemuan 🔴 dan jurang pendapatan.', 'Selesaikan penemuan 🔴 satu per satu dan catat bukti.'],
-    'M6 Breakeven': ['Jualan minimum setiap cawangan supaya tidak rugi.', '% capai breakeven (sasaran ≥ 120%). ⚪ bermaksud input kos belum lengkap.', 'Finance sahkan kos tetap F01–F12 dengan bil sebenar.'],
-    'M12 Expansion Lab': ['Simulasi cawangan baharu: untung, payback dan ROI dalam 3 senario.', 'Payback senario buruk (sasaran ≤ 24 bulan).', 'Gantikan semua nilai CONTOH dengan sebut harga sebenar sebelum dibentang.'],
-    'M10 Kawalan & Audit': ['Semakan integriti data dan kawalan dalaman setiap hari.', 'Semakan 🔴 dan ujian rambang 5 transaksi.', 'Selesaikan semakan 🔴 dan buat ujian rambang setiap hari.'],
-    'M11 Cukai': ['SST, e-Invois dan tarikh akhir caruman setiap bulan.', 'SST belum dibayar dan tarikh akhir terdekat.', 'Asingkan SST setiap minggu; bayar caruman sebelum 15hb.'],
-    'KPI': ['Kad skor 10 KPI kewangan utama dengan sasaran.', 'KPI 🔴 dan KPI ⚪ (data belum lengkap).', 'Setiap KPI 🔴 mesti ada tindakan di halaman Tindakan.'],
-    'Live': ['Kesegaran data, jualan 7 hari dan pengesan anomali.', 'Data paling lama (hari) dan hari bertanda ⚠.', 'Data lebih 1 hari: maklumkan pemilik sumber.'],
-    'Tetapan': ['Ambang, sasaran dan PIC yang digunakan FIRAX.', 'Sel kuning = input yang boleh diubah.', 'Hanya CEO / Finance Manager ubah nilai di fail Sheets.']
+    'M1 Nadi Tunai': ['How much money the company has in the bank now and how long it will last.', 'Cash runway (weeks) and net cash flow this month.', 'If ⚪: upload the bank statement and enter the account opening balance. If 🔴: plan a fund transfer or defer non-critical payments.'],
+    'M9 Bajet & Ramalan': ['Monthly sales against target, and the 2027 target by branch.', '% of target achieved and change from last month.', 'Months below 90% of target: request an action plan from that branch\'s BM.'],
+    'M2 Rekon Harian': ['Whether each day\'s sales actually reached the bank.', '🔴 SHORT days without a note and ⚪ days with no statement.', 'Accounts Staff record a reason for every 🔴 day and upload any missing statements.'],
+    'M3 Payout Delivery': ['Whether Grab, foodpanda and Shopee pay correctly, and whether the POS records every order.', 'POS accuracy (target 99%) and payout gap.', 'Delivery Owner ensures every order is keyed into FeedMe and audits payouts every Monday.'],
+    'M5 P&L Cawangan': ['Profit or loss for each branch this month (cash basis).', 'Net margin and lamp. ⚪ means costs are incomplete; do not decide yet.', 'Complete bank payment categories and payroll before the P&L is presented.'],
+    'M7 Food Cost': ['Food cost against sales, and which menu items make or lose money.', 'Food cost % (industry 28% to 35%) and menu items not yet costed.', 'Enter the cost per plate for the 20 best-selling items first.'],
+    'M8 Tenaga Kerja': ['Labour cost and productivity for each branch and time slot.', 'SPLH (target RM60) and 🔴 understaffed slots.', 'HR + BM move staff from overstaffed to understaffed slots before hiring.'],
+    'M4 AP & Opex': ['Unpaid supplier invoices and their age.', 'Overdue amounts and invoices over 60 days.', 'Review new invoices daily; pay in the Sunday & Wednesday (suppliers) and Tuesday (HR) runs on the Payments page.'],
+    'M13 QB Kewangan': ['Official P&L and Balance Sheet from QuickBooks, with the auditor\'s assessment.', 'QB net profit against the auditor-adjusted figure.', 'FM completes adjustments before reports are used for the bank or LHDN.'],
+    'M14 Audit Pendapatan': ['Comparison of FeedMe (POS) sales with QuickBooks records, and the list of audit findings.', '🔴 findings and revenue gaps.', 'Resolve 🔴 findings one by one and record the evidence.'],
+    'M6 Breakeven': ['Minimum sales for each branch to avoid a loss.', '% of breakeven achieved (target ≥ 120%). ⚪ means cost inputs are incomplete.', 'Finance confirms fixed costs F01–F12 against actual bills.'],
+    'M12 Expansion Lab': ['New-branch simulation: profit, payback and ROI in 3 scenarios.', 'Worst-case payback (target ≤ 24 months).', 'Replace all SAMPLE values with actual quotations before presenting.'],
+    'M10 Kawalan & Audit': ['Daily data-integrity and internal-control checks.', '🔴 checks and the 5-transaction spot test.', 'Resolve 🔴 checks and run the spot test every day.'],
+    'M11 Cukai': ['Monthly SST, e-Invoice and contribution deadlines.', 'Unpaid SST and the nearest deadline.', 'Set aside SST every week; pay contributions before the 15th.'],
+    'KPI': ['Scorecard of the 10 key financial KPIs with targets.', '🔴 KPIs and ⚪ KPIs (data incomplete).', 'Every 🔴 KPI must have an action on the Action page.'],
+    'Live': ['Data freshness, 7-day sales and anomaly detection.', 'Oldest data (days) and days flagged ⚠.', 'Data over 1 day old: notify the source owner.'],
+    'Tetapan': ['Thresholds, targets and owners used by FIRAX.', 'Yellow cells = editable inputs.', 'Only the CEO / Finance Manager change values in the Sheets file.']
   };
   function guideBox(name) {
     var g = MG[name]; if (!g) return '';
-    return '<details class="guide" open><summary>' + ic('<circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/>') + 'Cara baca halaman ini</summary><div class="gd">' +
-      '<div><b>Apa halaman ini</b><p>' + esc(g[0]) + '</p></div><div><b>Lihat nombor ini dahulu</b><p>' + esc(g[1]) + '</p></div><div class="do"><b>Apa perlu dibuat</b><p>' + esc(g[2]) + '</p></div></div></details>';
+    return '<details class="guide" open><summary>' + ic('<circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/>') + 'How to read this page</summary><div class="gd">' +
+      '<div><b>What this page shows</b><p>' + esc(g[0]) + '</p></div><div><b>Check these numbers first</b><p>' + esc(g[1]) + '</p></div><div class="do"><b>What to do</b><p>' + esc(g[2]) + '</p></div></div></details>';
   }
 
   /* ======================= log masuk ======================= */
@@ -201,23 +204,23 @@
   }
   function renderLogin(msg) {
     S.token = null; closeModal();
-    app.innerHTML = loginShell('<div class="kicker">Log masuk</div><h2 style="margin-top:6px">Selamat datang 👋</h2><p class="note" style="margin:4px 0 12px">Pilih nama anda, kemudian masukkan PIN 4 digit.</p><input class="inp" id="lq" placeholder="Cari nama" autocomplete="off"><div class="ulist" id="ll"><div class="skel" style="height:60px"></div><div class="skel" style="height:60px"></div></div>' + (msg ? '<div class="err">' + esc(msg) + '</div>' : '') + '<p class="note" style="margin-top:auto;padding-top:14px">Akaun baharu atau lupa PIN? Minta <b>kod aktivasi</b> daripada CEO. PIN anda tidak pernah dipaparkan atau dihantar kepada sesiapa.</p>');
+    app.innerHTML = loginShell('<div class="kicker">Sign in</div><h2 style="margin-top:6px">Welcome 👋</h2><p class="note" style="margin:4px 0 12px">Choose your name, then enter your 4-digit PIN.</p><input class="inp" id="lq" placeholder="Search name" autocomplete="off"><div class="ulist" id="ll"><div class="skel" style="height:60px"></div><div class="skel" style="height:60px"></div></div>' + (msg ? '<div class="err">' + esc(msg) + '</div>' : '') + '<p class="note" style="margin-top:auto;padding-top:14px">New account or forgot your PIN? Ask the CEO for an <b>activation code</b>. Your PIN is never shown or sent to anyone.</p>');
     rpc('fxLoginList', []).then(function (L) {
       S.users = L;
       var draw = function (q) {
         q = (q || '').toLowerCase();
         var list = L.filter(function (u) { return !q || (u.name + ' ' + u.jawatan + ' ' + u.roleLabel).toLowerCase().indexOf(q) >= 0; });
-        $('#ll').innerHTML = list.length ? list.map(function (u) { return '<button class="uitem" data-act="pick" data-id="' + esc(u.id) + '"><span class="av">' + esc(ini(u.name)) + '</span><span class="t"><b>' + esc(u.name) + '</b><small>' + esc(u.jawatan || u.roleLabel) + '</small></span>' + (u.needsCode ? '<span class="chip y">Aktifkan</span>' : '<span class="chip g">' + esc(u.role) + '</span>') + '</button>'; }).join('') : '<div class="empty"><b>Tiada nama sepadan</b></div>';
+        $('#ll').innerHTML = list.length ? list.map(function (u) { return '<button class="uitem" data-act="pick" data-id="' + esc(u.id) + '"><span class="av">' + esc(ini(u.name)) + '</span><span class="t"><b>' + esc(u.name) + '</b><small>' + esc(u.jawatan || u.roleLabel) + '</small></span>' + (u.needsCode ? '<span class="chip y">Activate</span>' : '<span class="chip g">' + esc(u.role) + '</span>') + '</button>'; }).join('') : '<div class="empty"><b>No matching names</b></div>';
       };
       draw(''); $('#lq').oninput = function () { draw(this.value); };
     }).catch(function (e) { $('#ll').innerHTML = '<div class="err">' + esc(e.error) + '</div>'; });
   }
   A.pick = function (el) { var u = S.users.filter(function (x) { return x.id === el.getAttribute('data-id'); })[0]; if (u.needsCode) activation(u); else pinPad(u); };
-  function who(u) { return '<div style="display:flex;align-items:center;gap:12px;margin-bottom:6px"><button class="iconbtn" data-act="back" aria-label="Kembali">' + ic('<path d="m15 18-6-6 6-6"/>') + '</button><span class="av">' + esc(ini(u.name)) + '</span><div><b>' + esc(u.name) + '</b><div class="note">' + esc(u.roleLabel) + '</div></div></div>'; }
+  function who(u) { return '<div style="display:flex;align-items:center;gap:12px;margin-bottom:6px"><button class="iconbtn" data-act="back" aria-label="Back">' + ic('<path d="m15 18-6-6 6-6"/>') + '</button><span class="av">' + esc(ini(u.name)) + '</span><div><b>' + esc(u.name) + '</b><div class="note">' + esc(u.roleLabel) + '</div></div></div>'; }
   function pinPad(u, msg) {
     S.pu = u; S.pin = '';
-    var keys = [1, 2, 3, 4, 5, 6, 7, 8, 9, 'kod', 0, 'del'].map(function (k) { return '<button class="' + (typeof k === 'string' ? 'fn' : '') + '" data-act="key" data-k="' + k + '" aria-label="' + (k === 'del' ? 'Padam' : k === 'kod' ? 'Guna kod aktivasi' : k) + '">' + (k === 'del' ? '⌫' : k === 'kod' ? 'Kod' : k) + '</button>'; }).join('');
-    app.innerHTML = loginShell(who(u) + '<p class="note" style="text-align:center;margin-top:14px">Masukkan PIN 4 digit anda</p><div class="pinbox" id="dots"><i></i><i></i><i></i><i></i></div><div class="pinpad">' + keys + '</div><div id="pmsg">' + (msg ? '<div class="err">' + esc(msg) + '</div>' : '') + '</div><input type="password" inputmode="numeric" maxlength="4" class="sr" id="pinkb" aria-label="PIN" autocomplete="off">');
+    var keys = [1, 2, 3, 4, 5, 6, 7, 8, 9, 'kod', 0, 'del'].map(function (k) { return '<button class="' + (typeof k === 'string' ? 'fn' : '') + '" data-act="key" data-k="' + k + '" aria-label="' + (k === 'del' ? 'Delete' : k === 'kod' ? 'Use activation code' : k) + '">' + (k === 'del' ? '⌫' : k === 'kod' ? 'Code' : k) + '</button>'; }).join('');
+    app.innerHTML = loginShell(who(u) + '<p class="note" style="text-align:center;margin-top:14px">Enter your 4-digit PIN</p><div class="pinbox" id="dots"><i></i><i></i><i></i><i></i></div><div class="pinpad">' + keys + '</div><div id="pmsg">' + (msg ? '<div class="err">' + esc(msg) + '</div>' : '') + '</div><input type="password" inputmode="numeric" maxlength="4" class="sr" id="pinkb" aria-label="PIN" autocomplete="off">');
     var kb = $('#pinkb'); if (window.innerWidth > 900) kb.focus();
     kb.oninput = function () { S.pin = kb.value.replace(/\D/g, '').slice(0, 4); dots(); if (S.pin.length === 4) submitPin(); };
   }
@@ -239,30 +242,30 @@
   }
   function activation(u, msg) {
     S.pu = u;
-    app.innerHTML = loginShell(who(u) + '<h3 style="margin-top:12px">Aktifkan akaun</h3><p class="note">Masukkan kod aktivasi 8 aksara daripada CEO, kemudian pilih PIN 4 digit anda sendiri. Kod hanya boleh digunakan sekali.</p>' +
-      '<div style="display:grid;gap:4px;margin-top:10px">' + field('Kod aktivasi', '<input class="inp" id="ac" placeholder="XXXX-XXXX" maxlength="9" autocomplete="off" style="text-transform:uppercase;letter-spacing:.2em">') +
-      field('PIN baharu (4 digit)', '<input class="inp" id="ap1" type="password" inputmode="numeric" maxlength="4" autocomplete="new-password">') + field('Sahkan PIN', '<input class="inp" id="ap2" type="password" inputmode="numeric" maxlength="4" autocomplete="new-password">') +
-      '<button class="btn pri" style="justify-content:center" data-act="doActivate">Aktifkan & log masuk</button></div><div id="amsg">' + (msg ? '<div class="err">' + esc(msg) + '</div>' : '') + '</div>');
+    app.innerHTML = loginShell(who(u) + '<h3 style="margin-top:12px">Activate account</h3><p class="note">Enter the 8-character activation code from the CEO, then choose your own 4-digit PIN. The code can only be used once.</p>' +
+      '<div style="display:grid;gap:4px;margin-top:10px">' + field('Activation code', '<input class="inp" id="ac" placeholder="XXXX-XXXX" maxlength="9" autocomplete="off" style="text-transform:uppercase;letter-spacing:.2em">') +
+      field('New PIN (4 digits)', '<input class="inp" id="ap1" type="password" inputmode="numeric" maxlength="4" autocomplete="new-password">') + field('Confirm PIN', '<input class="inp" id="ap2" type="password" inputmode="numeric" maxlength="4" autocomplete="new-password">') +
+      '<button class="btn pri" style="justify-content:center" data-act="doActivate">Activate & sign in</button></div><div id="amsg">' + (msg ? '<div class="err">' + esc(msg) + '</div>' : '') + '</div>');
   }
   A.doActivate = function (el) {
     var c = val('ac'), a = val('ap1'), b = val('ap2');
-    if (a !== b) { $('#amsg').innerHTML = '<div class="err">PIN tidak sepadan.</div>'; return; }
+    if (a !== b) { $('#amsg').innerHTML = '<div class="err">PINs do not match.</div>'; return; }
     el.disabled = true;
-    rpc('fxActivate', [S.pu.id, c, a]).then(function (r) { toast('Akaun diaktifkan. Selamat datang!'); start(r.token, r.me); }).catch(function (e) { el.disabled = false; $('#amsg').innerHTML = '<div class="err">' + esc(e.error) + '</div>'; });
+    rpc('fxActivate', [S.pu.id, c, a]).then(function (r) { toast('Account activated. Welcome!'); start(r.token, r.me); }).catch(function (e) { el.disabled = false; $('#amsg').innerHTML = '<div class="err">' + esc(e.error) + '</div>'; });
   };
   /** PIN ditetapkan admin wajib ditukar sebelum FIRAX dibuka. */
   function forcePin(msg) {
     var me = S.me;
-    app.innerHTML = loginShell(who({ name: me.name, roleLabel: me.roleLabel }) + '<h3 style="margin-top:12px">Pilih PIN anda sendiri</h3><p class="note">PIN semasa ditetapkan oleh admin. Pilih PIN 4 digit baharu yang hanya anda tahu.</p>' +
-      '<div style="display:grid;gap:4px;margin-top:10px">' + field('PIN semasa (daripada admin)', '<input class="inp" id="fp0" type="password" inputmode="numeric" maxlength="4" autocomplete="current-password">') +
-      field('PIN baharu (4 digit)', '<input class="inp" id="fp1" type="password" inputmode="numeric" maxlength="4" autocomplete="new-password">') + field('Sahkan PIN baharu', '<input class="inp" id="fp2" type="password" inputmode="numeric" maxlength="4" autocomplete="new-password">') +
-      '<button class="btn pri" style="justify-content:center" data-act="doForcePin">Simpan PIN & teruskan</button></div><div id="fmsg">' + (msg ? '<div class="err">' + esc(msg) + '</div>' : '') + '</div>');
+    app.innerHTML = loginShell(who({ name: me.name, roleLabel: me.roleLabel }) + '<h3 style="margin-top:12px">Choose your own PIN</h3><p class="note">Your current PIN was set by an admin. Choose a new 4-digit PIN that only you know.</p>' +
+      '<div style="display:grid;gap:4px;margin-top:10px">' + field('Current PIN (from admin)', '<input class="inp" id="fp0" type="password" inputmode="numeric" maxlength="4" autocomplete="current-password">') +
+      field('New PIN (4 digits)', '<input class="inp" id="fp1" type="password" inputmode="numeric" maxlength="4" autocomplete="new-password">') + field('Confirm new PIN', '<input class="inp" id="fp2" type="password" inputmode="numeric" maxlength="4" autocomplete="new-password">') +
+      '<button class="btn pri" style="justify-content:center" data-act="doForcePin">Save PIN & continue</button></div><div id="fmsg">' + (msg ? '<div class="err">' + esc(msg) + '</div>' : '') + '</div>');
   }
   A.doForcePin = function (el) {
     var a = val('fp0'), b = val('fp1'), c = val('fp2');
-    if (b !== c) { $('#fmsg').innerHTML = '<div class="err">PIN baharu tidak sepadan.</div>'; return; }
+    if (b !== c) { $('#fmsg').innerHTML = '<div class="err">New PINs do not match.</div>'; return; }
     el.disabled = true;
-    rpc('fxChangePin', [S.token, a, b]).then(function (r) { toast('PIN disimpan. Selamat datang!'); delete S.me.mustChange; start(r.token, S.me); })
+    rpc('fxChangePin', [S.token, a, b]).then(function (r) { toast('PIN saved. Welcome!'); delete S.me.mustChange; start(r.token, S.me); })
       .catch(function (e) { el.disabled = false; $('#fmsg').innerHTML = '<div class="err">' + esc(e.error) + '</div>'; });
   };
   function start(token, me, boot) {
@@ -300,27 +303,27 @@
   I.more = '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>';
   /* Struktur v2.1: ikut KERJA pengguna, bukan ikut modul sheet. Bahasa mudah; kod M1–M14 hanya dalam tab. */
   var PG = {
-    home: { t: 'Ringkasan', i: 'home', sub: 'Keadaan kewangan Sofwah dalam 30 saat', q: 'Adakah kewangan kita sihat hari ini?' },
-    routine: { t: 'Tugas Saya', i: 'routine', sub: 'Senarai semak harian, mingguan & bulanan · langkah demi langkah', q: 'Apa saya perlu buat hari ini?' },
-    actions: { t: 'Amaran', i: 'actions', sub: 'Isu 🔴 yang perlu diselesaikan · siapa, bila, cara', q: 'Apa yang tidak kena dan siapa uruskan?' },
-    pay: { t: 'Bayaran', i: 'bank', sub: 'Ahad & Rabu: supplier · Selasa: staf & HR · hanya yang diluluskan', q: 'Siapa perlu dibayar hari ini?' },
-    soa: { t: 'Supplier', i: 'bill', sub: 'Penyata akaun setiap supplier · hutang, umur hutang, belian & harga', q: 'Berapa kita berhutang dan beli dengan supplier ini?' },
-    cash: { t: 'Tunai', i: 'cash', sub: 'Baki bank, aliran tunai dan berapa lama tunai cukup', q: 'Cukupkah tunai kita?' },
-    sales: { t: 'Jualan & Rekon', i: 'sales', sub: 'Jualan POS lawan wang masuk bank · payout delivery', q: 'Semua jualan masuk ke bank?' },
-    profit: { t: 'Untung & Kos', i: 'profit', sub: 'Untung setiap cawangan, kos bahan, kos staf, AP & opex', q: 'Cawangan mana untung, kos mana tinggi?' },
-    books: { t: 'Buku & Audit', i: 'books', sub: 'P&L dan kunci kira-kira QuickBooks · penemuan audit', q: 'Buku kita bersih untuk audit?' },
-    planning: { t: 'Perancangan', i: 'planning', sub: 'Breakeven, bajet, ramalan dan cawangan baharu', q: 'Berapa jualan perlu untuk untung?' },
-    control: { t: 'Kawalan & Cukai', i: 'control', sub: 'Kawalan dalaman, SST, e-Invois dan 10 KPI', q: 'Kita patuh dan terkawal?' },
-    live: { t: 'Status Data', i: 'live', sub: 'Bila setiap sumber data dikemas kini · anomali jualan', q: 'Data ini terkini?' },
-    guide: { t: 'Panduan', i: 'guide', sub: 'Kamus istilah, julat sihat industri dan cara guna FIRAX', q: 'Apa maksud istilah ini?' },
-    settings: { t: 'Tetapan', i: 'settings', sub: 'Pengguna, PIN, ambang dan sumber data', ceo: true }
+    home: { t: 'Overview', i: 'home', sub: "Sofwah's finances in 30 seconds", q: 'Are our finances healthy today?' },
+    routine: { t: 'My Tasks', i: 'routine', sub: 'Daily, weekly & monthly checklists · step by step', q: 'What do I need to do today?' },
+    actions: { t: 'Alerts', i: 'actions', sub: '🔴 issues to resolve · who, when, how', q: "What's wrong and who's handling it?" },
+    pay: { t: 'Payments', i: 'bank', sub: 'Sunday & Wednesday: suppliers · Tuesday: staff & HR · approved only', q: 'Who needs to be paid today?' },
+    soa: { t: 'Suppliers', i: 'bill', sub: 'Statement of account per supplier · balance owed, AP aging, purchases & pricing', q: 'How much do we owe and buy from this supplier?' },
+    cash: { t: 'Cash', i: 'cash', sub: 'Bank balances, cash flow and cash runway', q: 'Do we have enough cash?' },
+    sales: { t: 'Sales & Reconciliation', i: 'sales', sub: 'POS sales vs bank deposits · delivery payouts', q: 'Did all sales reach the bank?' },
+    profit: { t: 'Profit & Costs', i: 'profit', sub: 'Profit by branch, food cost, labour cost, AP & opex', q: 'Which branches make a profit, which costs are high?' },
+    books: { t: 'Books & Audit', i: 'books', sub: 'QuickBooks P&L and balance sheet · audit findings', q: 'Are our books clean for audit?' },
+    planning: { t: 'Planning', i: 'planning', sub: 'Breakeven, budget, forecast and new branches', q: 'How much do we need to sell to make a profit?' },
+    control: { t: 'Controls & Tax', i: 'control', sub: 'Internal controls, SST, e-Invoice and 10 KPIs', q: 'Are we compliant and in control?' },
+    live: { t: 'Data Status', i: 'live', sub: 'When each data source was last updated · sales anomalies', q: 'Is this data up to date?' },
+    guide: { t: 'Guide', i: 'guide', sub: 'Glossary, healthy industry ranges and how to use FIRAX', q: 'What does this term mean?' },
+    settings: { t: 'Settings', i: 'settings', sub: 'Users, PINs, thresholds and data sources', ceo: true }
   };
   /** Kumpulan menu ikut peranan: staf akaun nampak kerja dahulu; CEO/FM nampak ringkasan & laporan dahulu. */
   function navGroups() {
-    var work = ['Kerja hari ini', ['routine', 'pay', 'soa', 'actions']], rep = ['Laporan kewangan', ['cash', 'sales', 'profit', 'books', 'planning', 'control']], sys = ['Bantuan', ['live', 'guide', 'settings']];
+    var work = ["Today's work", ['routine', 'pay', 'soa', 'actions']], rep = ['Financial reports', ['cash', 'sales', 'profit', 'books', 'planning', 'control']], sys = ['Help', ['live', 'guide', 'settings']];
     var r = S.me && S.me.role;
-    if (r === 'ACC') return [work, ['Gambaran', ['home']], rep, sys];
-    if (r === 'BM' || r === 'VIEW') return [['', ['home', 'actions']], rep, ['Supplier', ['soa']], sys];
+    if (r === 'ACC') return [work, ['Overview', ['home']], rep, sys];
+    if (r === 'BM' || r === 'VIEW') return [['', ['home', 'actions']], rep, ['Suppliers', ['soa']], sys];
     return [['', ['home']], work, rep, sys];
   }
   function homePage() { return S.me && S.me.role === 'ACC' ? 'routine' : 'home'; }
@@ -350,8 +353,8 @@
   function sideCard() {
     var h = S.home; if (!h || !h.live) return '';
     var l = h.live;
-    return '<div class="side-card"><b>' + dot(l.status) + ' &nbsp;' + esc(unemo(l.status) || 'Status') + '</b><small>Sumber data · ' + esc(l.sources || '—') + ' bersambung</small>' +
-      '<div class="row"><span class="muted">Data paling lama</span><b>' + esc(l.oldest || '—') + '</b></div><div class="row"><span class="muted">Tindakan 🔴</span><b style="color:#ff8b8b">' + esc(l.red || '0') + '</b></div></div>';
+    return '<div class="side-card"><b>' + dot(l.status) + ' &nbsp;' + esc(unemo(l.status) || 'Status') + '</b><small>Data sources · ' + esc(l.sources || '—') + ' connected</small>' +
+      '<div class="row"><span class="muted">Oldest data</span><b>' + esc(l.oldest || '—') + '</b></div><div class="row"><span class="muted">Action 🔴</span><b style="color:#ff8b8b">' + esc(l.red || '0') + '</b></div></div>';
   }
   function layout(inner) {
     var p = PG[S.page], live = S.home && S.home.live;
@@ -359,13 +362,13 @@
       '<nav class="nav">' + navHtml() + '</nav>' + sideCard() + '</aside><div class="scrim" id="scrim" data-act="closeSide"></div>' +
       '<main class="main"><header class="top glass"><button class="iconbtn burger" data-act="openSide" aria-label="Menu">' + ic(I.menu) + '</button>' +
       '<div class="grow"><h1>' + esc(p.t) + '</h1><div class="sub">' + esc(p.sub) + '</div></div>' +
-      '<button class="pill srch" data-act="search" title="Cari halaman atau supplier ( / )">' + ic(I.search).replace('<svg', '<svg width="15" height="15"') + '<span class="hide-m">Cari…</span><kbd class="hide-m">/</kbd></button>' +
+      '<button class="pill srch" data-act="search" title="Search pages or suppliers ( / )">' + ic(I.search).replace('<svg', '<svg width="15" height="15"') + '<span class="hide-m">Search…</span><kbd class="hide-m">/</kbd></button>' +
       (live ? '<span class="pill live hide-m">' + dot(live.status) + esc(unemo(live.status) || 'Live') + '</span>' : '') +
-      '<button class="pill hide-m" data-act="refresh" title="Muat semula data dari sheet">' + ic(I.refresh).replace('<svg', '<svg width="15" height="15"') + 'Muat semula</button>' +
-      '<button class="pill hide-m" data-act="print" title="Cetak / simpan PDF halaman ini">' + ic(I.print).replace('<svg', '<svg width="15" height="15"') + 'Cetak</button>' +
+      '<button class="pill hide-m" data-act="refresh" title="Refresh data from the sheet">' + ic(I.refresh).replace('<svg', '<svg width="15" height="15"') + 'Refresh</button>' +
+      '<button class="pill hide-m" data-act="print" title="Print / save this page as PDF">' + ic(I.print).replace('<svg', '<svg width="15" height="15"') + 'Print</button>' +
       '<button class="user" data-act="userMenu"><span class="av">' + esc(ini(S.me.name)) + '</span><b>' + esc(S.me.name) + '</b>' + ic(I.arrow).replace('<svg', '<svg width="14" height="14" style="transform:rotate(90deg)"') + '</button></header>' +
-      '<div class="printh"><b>SOFWAH FIRAX</b> · ' + esc(p.t) + ' · dicetak ' + esc(new Date().toLocaleDateString('ms-MY')) + ' oleh ' + esc(S.me.name) + '</div>' +
-      (p.q ? '<div class="pageq">' + ic(I.guide).replace('<svg', '<svg width="14" height="14"') + 'Halaman ini menjawab: <b>' + esc(p.q) + '</b></div>' : '') +
+      '<div class="printh"><b>SOFWAH FIRAX</b> · ' + esc(p.t) + ' · printed ' + esc(new Date().toLocaleDateString('en-MY')) + ' by ' + esc(S.me.name) + '</div>' +
+      (p.q ? '<div class="pageq">' + ic(I.guide).replace('<svg', '<svg width="14" height="14"') + 'This page answers: <b>' + esc(p.q) + '</b></div>' : '') +
       '<div id="view" class="stack">' + (inner || '<div class="skel" style="height:300px"></div><div class="skel" style="height:220px"></div>') + '</div></main>' + tabbarHtml() + '</div>';
   }
   function go(p, quiet) {
@@ -379,27 +382,27 @@
   A.openSide = function () { $('#side').classList.add('open'); $('#scrim').classList.add('open'); };
   A.closeSide = function () { var s = $('#side'); if (s) s.classList.remove('open'); var c = $('#scrim'); if (c) c.classList.remove('open'); };
   A.refresh = function (el) {
-    if (el) el.disabled = true; toast('Memuat semula dari sheet FIRAX…');
+    if (el) el.disabled = true; toast('Refreshing from the FIRAX sheet…');
     rpc('fxRefresh', [S.token]).then(function () { dropKept(); S.home = null; S.pages = {}; S.acts = null; S.rt = null; S.pay = null; S.soa = null; return rpc('fxHome', [S.token]); })
-      .then(function (h) { S.home = h; keep('home', h); go(S.page); toast('Data dikemas kini'); prefetch(); }).catch(function (e) { toast(e.error, true); if (el) el.disabled = false; });
+      .then(function (h) { S.home = h; keep('home', h); go(S.page); toast('Data updated'); prefetch(); }).catch(function (e) { toast(e.error, true); if (el) el.disabled = false; });
   };
   A.userMenu = function () {
     modal('<div style="display:flex;gap:12px;align-items:center"><span class="av">' + esc(ini(S.me.name)) + '</span><div><b>' + esc(S.me.name) + '</b><div class="note">' + esc(S.me.roleLabel) + '</div></div></div>' +
-      '<div class="note" style="margin:14px 0">FIRAX v' + esc(S.version || '') + ' · data dibaca terus daripada spreadsheet <b>Sofwah FIRAX 2027</b>. Panduan & Kamus menerangkan setiap istilah.</div>' +
-      '<div class="row-btn"><button class="btn" data-act="changePin">Tukar PIN</button><button class="btn" data-act="logout">' + ic(I.out) + 'Log keluar</button></div>');
+      '<div class="note" style="margin:14px 0">FIRAX v' + esc(S.version || '') + ' · data read directly from the <b>Sofwah FIRAX 2027</b> spreadsheet. The Guide & Glossary explain every term.</div>' +
+      '<div class="row-btn"><button class="btn" data-act="changePin">Change PIN</button><button class="btn" data-act="logout">' + ic(I.out) + 'Sign out</button></div>');
   };
   A.changePin = function () {
-    modal('<h3>Tukar PIN</h3><div style="margin-top:12px">' + field('PIN semasa', '<input id="c0" type="password" inputmode="numeric" maxlength="4">') + field('PIN baharu', '<input id="c1" type="password" inputmode="numeric" maxlength="4">') + field('Sahkan PIN baharu', '<input id="c2" type="password" inputmode="numeric" maxlength="4">') +
-      '</div><div id="cm"></div><div class="row-btn"><button class="btn" data-act="closeModal">Batal</button><button class="btn pri" data-act="doChangePin">Simpan</button></div>');
+    modal('<h3>Change PIN</h3><div style="margin-top:12px">' + field('Current PIN', '<input id="c0" type="password" inputmode="numeric" maxlength="4">') + field('New PIN', '<input id="c1" type="password" inputmode="numeric" maxlength="4">') + field('Confirm new PIN', '<input id="c2" type="password" inputmode="numeric" maxlength="4">') +
+      '</div><div id="cm"></div><div class="row-btn"><button class="btn" data-act="closeModal">Cancel</button><button class="btn pri" data-act="doChangePin">Save</button></div>');
   };
   A.closeModal = closeModal;
   A.doChangePin = function (el) {
-    if (val('c1') !== val('c2')) { $('#cm').innerHTML = '<div class="err">PIN baharu tidak sepadan.</div>'; return; }
+    if (val('c1') !== val('c2')) { $('#cm').innerHTML = '<div class="err">New PINs do not match.</div>'; return; }
     el.disabled = true;
-    rpc('fxChangePin', [S.token, val('c0'), val('c1')]).then(function (r) { S.token = r.token; sset(TK, r.token); closeModal(); toast('PIN ditukar'); }).catch(function (e) { el.disabled = false; $('#cm').innerHTML = '<div class="err">' + esc(e.error) + '</div>'; });
+    rpc('fxChangePin', [S.token, val('c0'), val('c1')]).then(function (r) { S.token = r.token; sset(TK, r.token); closeModal(); toast('PIN changed'); }).catch(function (e) { el.disabled = false; $('#cm').innerHTML = '<div class="err">' + esc(e.error) + '</div>'; });
   };
   function view(html) { var v = $('#view'); if (v) v.innerHTML = html; }
-  function fail(e) { view('<div class="glass pad"><div class="err">' + esc((e && e.error) || 'Gagal dimuatkan.') + '</div><div class="row-btn" style="justify-content:flex-start"><button class="btn" data-act="refresh">' + ic(I.refresh) + 'Cuba lagi</button></div></div>'); }
+  function fail(e) { view('<div class="glass pad"><div class="err">' + esc((e && e.error) || 'Failed to load.') + '</div><div class="row-btn" style="justify-content:flex-start"><button class="btn" data-act="refresh">' + ic(I.refresh) + 'Try again</button></div></div>'); }
   function needHome() { return S.home ? Promise.resolve(S.home) : rpc('fxHome', [S.token]).then(function (h) { S.home = h; keep('home', h); return h; }); }
   function needRt() { return S.rt ? Promise.resolve(S.rt) : rpc('fxRoutine', [S.token]).then(function (r) { S.rt = r; keep('rt', r); return r; }); }
 
@@ -439,20 +442,20 @@
 
   /* ======================= Cari (halaman + supplier) ======================= */
   A.search = function () {
-    modal('<div class="srchbox">' + ic(I.search) + '<input id="sq" placeholder="Cari halaman, supplier atau istilah… (cth. tunai, KTF, food cost)" autocomplete="off"></div><div id="sr" class="srres"></div><div class="note" style="margin-top:8px">↑ ↓ pilih · Enter buka · Esc tutup</div>');
+    modal('<div class="srchbox">' + ic(I.search) + '<input id="sq" placeholder="Search pages, suppliers or terms… (e.g. cash, KTF, food cost)" autocomplete="off"></div><div id="sr" class="srres"></div><div class="note" style="margin-top:8px">↑ ↓ select · Enter open · Esc close</div>');
     var inp = $('#sq'); inp.focus(); S.si = 0;
     var vend = S.soa && S.soa.vendors ? S.soa.vendors : kept('vendors');
     if (!vend && canSee('soa')) rpc('fxSoa', [S.token, '', '', '']).then(function (r) { S.soa = r; keep('vendors', r.vendors); vend = r.vendors; draw(); }).catch(function () {});
     function items() {
       var q = inp.value.trim().toLowerCase(), out = [];
       Object.keys(PG).filter(canSee).forEach(function (k) { var p = PG[k], hay = (p.t + ' ' + p.sub + ' ' + (p.q || '')).toLowerCase(); if (!q || hay.indexOf(q) >= 0) out.push({ t: 'p', k: k, l: p.t, s: p.q || p.sub }); });
-      if (q && vend) vend.filter(function (v) { return (v.key + ' ' + v.short + ' ' + v.kod).toLowerCase().indexOf(q) >= 0; }).slice(0, 8).forEach(function (v) { out.push({ t: 'v', k: v.key, l: v.short, s: 'Supplier · ' + (v.out ? 'terhutang RM' + fnum(v.out, 2) : 'tiada hutang') }); });
-      if (q && typeof GL !== 'undefined') GL.filter(function (g) { return (g.n + ' ' + g.a).toLowerCase().indexOf(q) >= 0; }).slice(0, 4).forEach(function (g) { out.push({ t: 'g', k: g.k, l: g.n, s: 'Istilah · ' + g.a.slice(0, 80) }); });
+      if (q && vend) vend.filter(function (v) { return (v.key + ' ' + v.short + ' ' + v.kod).toLowerCase().indexOf(q) >= 0; }).slice(0, 8).forEach(function (v) { out.push({ t: 'v', k: v.key, l: v.short, s: 'Supplier · ' + (v.out ? 'owed RM' + fnum(v.out, 2) : 'nothing owed') }); });
+      if (q && typeof GL !== 'undefined') GL.filter(function (g) { return (g.n + ' ' + g.a).toLowerCase().indexOf(q) >= 0; }).slice(0, 4).forEach(function (g) { out.push({ t: 'g', k: g.k, l: g.n, s: 'Term · ' + g.a.slice(0, 80) }); });
       return out.slice(0, 14);
     }
     function draw() {
       var it = items(); S.sItems = it; if (S.si >= it.length) S.si = 0;
-      $('#sr').innerHTML = it.length ? it.map(function (x, i) { return '<button class="sri' + (i === S.si ? ' on' : '') + '" data-act="searchGo" data-i="' + i + '"><span class="tag ' + x.t + '">' + (x.t === 'p' ? 'Halaman' : x.t === 'v' ? 'Supplier' : 'Istilah') + '</span><b>' + esc(x.l) + '</b><small>' + esc(x.s) + '</small></button>'; }).join('') : '<div class="empty">Tiada padanan</div>';
+      $('#sr').innerHTML = it.length ? it.map(function (x, i) { return '<button class="sri' + (i === S.si ? ' on' : '') + '" data-act="searchGo" data-i="' + i + '"><span class="tag ' + x.t + '">' + (x.t === 'p' ? 'Page' : x.t === 'v' ? 'Supplier' : 'Term') + '</span><b>' + esc(x.l) + '</b><small>' + esc(x.s) + '</small></button>'; }).join('') : '<div class="empty">No matches</div>';
     }
     inp.oninput = function () { S.si = 0; draw(); };
     inp.onkeydown = function (e) { if (e.key === 'ArrowDown') { S.si = Math.min(S.si + 1, S.sItems.length - 1); draw(); e.preventDefault(); } else if (e.key === 'ArrowUp') { S.si = Math.max(S.si - 1, 0); draw(); e.preventDefault(); } else if (e.key === 'Enter') { A.searchGo(null, S.si); } };
@@ -465,7 +468,7 @@
     else { S.gq = x.l; go('guide'); }
   };
   document.addEventListener('keydown', function (e) { if (e.key === '/' && S.token && !e.target.closest('input,textarea,select') && !$('#ov')) { e.preventDefault(); A.search(); } });
-  A.print = function () { document.body.setAttribute('data-print', new Date().toLocaleString('ms-MY')); window.print(); };
+  A.print = function () { document.body.setAttribute('data-print', new Date().toLocaleString('en-MY')); window.print(); };
 
   /* ======================= Utama (Home) ======================= */
   function renderHome() {
@@ -473,13 +476,13 @@
   }
   function cardBy(h, re) { return (h.cards || []).filter(function (c) { return re.test(c.l); })[0] || { l: '', v: '—', n: '' }; }
   function kpiBy(h, re) { return (h.kpi || []).filter(function (k) { return re.test(k.k); })[0] || { k: '', v: '', t: '', lamp: '⚪' }; }
-  var LW = { g: 'Sihat', y: 'Pantau', r: 'Tindakan sekarang', w: 'Menunggu data' }, LS = { g: 100, y: 60, r: 20 };
+  var LW = { g: 'Healthy', y: 'Watch', r: 'Act now', w: 'Awaiting data' }, LS = { g: 100, y: 60, r: 20 };
   /** Lampu paling teruk antara yang dinilai; ⚪ jika tiada yang dinilai. */
   function worst(ls) { var o = ['r', 'y', 'g']; for (var i = 0; i < o.length; i++) if (ls.indexOf(o[i]) >= 0) return o[i]; return 'w'; }
   function healthOf(h) {
     var ks = h.kpi || [], rated = ks.filter(function (k) { return LS[lamp(k.lamp)] !== undefined; });
     var score = rated.length ? rated.reduce(function (a, k) { return a + LS[lamp(k.lamp)]; }, 0) / rated.length : null;
-    return { score: score, rated: rated.length, all: ks.length || 10, grade: score === null ? 'Belum cukup data' : score >= 80 ? 'Sihat' : score >= 60 ? 'Stabil, perlu dipantau' : score >= 40 ? 'Perlu perhatian' : 'Kritikal' };
+    return { score: score, rated: rated.length, all: ks.length || 10, grade: score === null ? 'Not enough data' : score >= 80 ? 'Healthy' : score >= 60 ? 'Stable, keep watching' : score >= 40 ? 'Needs attention' : 'Critical' };
   }
   function homeView(h) {
     var AE = h.actions || { rules: [], counts: {} }, rules = AE.rules || [], lv = h.live || {};
@@ -491,16 +494,16 @@
 
     /* ---- 5 tiang kewangan ---- */
     var P = [
-      { p: 'cash', n: 'Tunai', icon: I.cash, l: worst([lamp(k.run.lamp), lamp(cash.n)].filter(function (x) { return x && x !== 'w'; })), big: k.run.v && lamp(k.run.lamp) !== 'w' ? k.run.v + ' minggu' : 'Belum sah', sub: 'Runway tunai · AP tertunggak ' + ap.v, key: 'runway',
-        say: { w: 'Baki awal akaun bank belum lengkap, jadi FIRAX belum boleh kira berapa lama tunai cukup.', g: 'Tunai cukup untuk operasi lebih 8 minggu.', y: 'Tunai di bawah 8 minggu. Kawal bayaran yang tidak kritikal.', r: 'Tunai hampir habis. Tindakan segera.' } },
-      { p: 'sales', n: 'Jualan', icon: I.sales, l: lamp(sales.n) || 'w', big: sales.v, sub: unemo(sales.n), key: 'jualan',
-        say: { g: 'Jualan mencapai sasaran.', y: 'Jualan hampir sasaran. Tolak promosi di cawangan yang ketinggalan.', r: 'Jualan jauh di bawah sasaran. Minta pelan tindakan setiap BM.', w: 'Data jualan belum lengkap.' } },
-      { p: 'profit', n: 'Untung', icon: I.profit, l: worst([lamp(k.mar.lamp), lamp(k.be.lamp)].filter(function (x) { return x && x !== 'w'; })), big: prof.v, sub: 'Untung kendalian (had atas)', key: 'margin',
-        say: { w: unemo(prof.n) + '. Jangan buat keputusan berdasarkan untung ini dahulu.', g: 'Margin di atas sasaran.', y: 'Untung positif tetapi di bawah sasaran.', r: 'Cawangan atau syarikat rugi.' } },
-      { p: 'profit', n: 'Kos', icon: I.bill, l: worst([lamp(k.fc.lamp), lamp(k.scor.lamp), lamp(splh.n)].filter(function (x) { return x && x !== 'w'; })), big: fc.v, sub: 'Food cost · SCOR ' + (k.scor.v || '—') + ' · SPLH ' + splh.v, key: 'food',
-        say: { g: 'Kos dalam julat industri.', y: (fcN && fcN > 35 ? 'Food cost ' + Math.round(fcN) + '% melebihi julat industri 28–35%. ' : '') + 'Produktiviti staf di bawah sasaran RM60 sejam.', r: 'Kos melebihi had. Semak bahan dan shift.', w: 'Sasaran food cost dan SCOR belum diputuskan CEO.' } },
-      { p: 'control', n: 'Kawalan', icon: I.control, l: worst([k.rek, k.gap, k.ap, k.close].map(function (x) { return lamp(x.lamp); }).filter(function (x) { return x && x !== 'w'; })), big: k.rek.v || rek.v, sub: 'Hari rekon padan · AP tepat masa ' + (k.ap.v || '—'), key: 'rekon',
-        say: { g: 'Rekon dan bayaran terkawal.', y: 'Ada kelewatan kecil. Pantau.', r: 'Banyak hari rekon belum padan dan penyata bank lewat. Risiko kebocoran tidak dapat dikesan.', w: 'Data kawalan belum lengkap.' } }
+      { p: 'cash', n: 'Cash', icon: I.cash, l: worst([lamp(k.run.lamp), lamp(cash.n)].filter(function (x) { return x && x !== 'w'; })), big: k.run.v && lamp(k.run.lamp) !== 'w' ? k.run.v + ' weeks' : 'Not confirmed', sub: 'Cash runway · Overdue AP ' + ap.v, key: 'runway',
+        say: { w: 'Bank opening balances are incomplete, so FIRAX cannot yet calculate how long cash will last.', g: 'Cash covers more than 8 weeks of operations.', y: 'Cash covers less than 8 weeks. Hold non-critical payments.', r: 'Cash is nearly exhausted. Act immediately.' } },
+      { p: 'sales', n: 'Sales', icon: I.sales, l: lamp(sales.n) || 'w', big: sales.v, sub: unemo(sales.n), key: 'jualan',
+        say: { g: 'Sales are on target.', y: 'Sales are close to target. Push promotions at lagging branches.', r: 'Sales are well below target. Ask every BM for an action plan.', w: 'Sales data is incomplete.' } },
+      { p: 'profit', n: 'Profit', icon: I.profit, l: worst([lamp(k.mar.lamp), lamp(k.be.lamp)].filter(function (x) { return x && x !== 'w'; })), big: prof.v, sub: 'Operating profit (upper bound)', key: 'margin',
+        say: { w: unemo(prof.n) + '. Do not make decisions based on this profit figure yet.', g: 'Margin is above target.', y: 'Profit is positive but below target.', r: 'A branch or the company is making a loss.' } },
+      { p: 'profit', n: 'Costs', icon: I.bill, l: worst([lamp(k.fc.lamp), lamp(k.scor.lamp), lamp(splh.n)].filter(function (x) { return x && x !== 'w'; })), big: fc.v, sub: 'Food cost · SCOR ' + (k.scor.v || '—') + ' · SPLH ' + splh.v, key: 'food',
+        say: { g: 'Costs are within the industry range.', y: (fcN && fcN > 35 ? 'Food cost ' + Math.round(fcN) + '% is above the 28–35% industry range. ' : '') + 'Staff productivity is below the RM60 per hour target.', r: 'Costs are over the limit. Review ingredients and shifts.', w: 'Food cost and SCOR targets not yet set by the CEO.' } },
+      { p: 'control', n: 'Controls', icon: I.control, l: worst([k.rek, k.gap, k.ap, k.close].map(function (x) { return lamp(x.lamp); }).filter(function (x) { return x && x !== 'w'; })), big: k.rek.v || rek.v, sub: 'Reconciled days · On-time AP ' + (k.ap.v || '—'), key: 'rekon',
+        say: { g: 'Reconciliation and payments are under control.', y: 'Minor delays. Keep watching.', r: 'Many days are unreconciled and bank statements are late. Leakage may go undetected.', w: 'Controls data is incomplete.' } }
     ];
     if (fcN && fcN > 35 && P[3].l === 'w') P[3].l = 'y';
 
@@ -512,50 +515,50 @@
     var reds = rules.filter(function (r) { return lamp(r.lamp) === 'r'; });
     var bullets = [
       [lamp(sales.n) || 'w', '<b>' + esc(sales.l.toLowerCase().replace(/(^|\s)\S/g, function (c) { return c.toUpperCase(); })) + ': ' + esc(sales.v) + '</b> · ' + esc(unemo(sales.n))],
-      avg ? [avgT && avg >= avgT ? 'g' : avgT && avg >= avgT * .9 ? 'y' : 'r', '7 hari lepas: purata <b>RM' + fnum(avg) + '</b> sehari' + (avgT ? ' (' + Math.round(avg / avgT * 100) + '% sasaran harian)' : '') + '. Terbaik ' + esc(best.d) + ' RM' + fnum(best.v) + ', terlemah ' + esc(low.d) + ' RM' + fnum(low.v) + '.'] : null,
-      brS.length ? ['w', 'Paling hampir sasaran: <b>' + esc(brS[0].n) + ' ' + Math.round(brS[0].pct) + '%</b>. Paling jauh: <b>' + esc(brS[brS.length - 1].n) + ' ' + Math.round(brS[brS.length - 1].pct) + '%</b>.'] : null,
-      [reds.length ? 'r' : 'g', reds.length ? '<b>' + reds.length + ' isu 🔴</b> perlu tindakan hari ini: ' + esc(reds[0].trigger) + (reds[1] ? ', ' + esc(reds[1].trigger) : '') + '.' : 'Tiada isu 🔴 hari ini.'],
-      [num(bank.age) > 1 ? 'y' : 'g', 'Data: penyata bank sehingga <b>' + esc(bank.date || '—') + '</b>' + (bank.age ? ' (' + esc(bank.age) + ' hari)' : '') + ' · ' + hs.rated + ' daripada ' + hs.all + ' KPI ada data lengkap.']
+      avg ? [avgT && avg >= avgT ? 'g' : avgT && avg >= avgT * .9 ? 'y' : 'r', 'Last 7 days: average <b>RM' + fnum(avg) + '</b> per day' + (avgT ? ' (' + Math.round(avg / avgT * 100) + '% of daily target)' : '') + '. Best ' + esc(best.d) + ' RM' + fnum(best.v) + ', weakest ' + esc(low.d) + ' RM' + fnum(low.v) + '.'] : null,
+      brS.length ? ['w', 'Closest to target: <b>' + esc(brS[0].n) + ' ' + Math.round(brS[0].pct) + '%</b>. Furthest: <b>' + esc(brS[brS.length - 1].n) + ' ' + Math.round(brS[brS.length - 1].pct) + '%</b>.'] : null,
+      [reds.length ? 'r' : 'g', reds.length ? '<b>' + reds.length + ' 🔴 issues</b> need action today: ' + esc(reds[0].trigger) + (reds[1] ? ', ' + esc(reds[1].trigger) : '') + '.' : 'No 🔴 issues today.'],
+      [num(bank.age) > 1 ? 'y' : 'g', 'Data: bank statement up to <b>' + esc(bank.date || '—') + '</b>' + (bank.age ? ' (' + esc(bank.age) + ' days)' : '') + ' · ' + hs.rated + ' of ' + hs.all + ' KPIs have complete data.']
     ].filter(Boolean);
 
     var hero = '<section class="glass hero2"><div class="art">' + heroArt('hm') + '</div><div class="l"><div class="kicker">Assalamualaikum, ' + esc(S.me.name) + ' · ' + esc(lv.clock ? String(lv.clock).split('·')[0] : '') + '</div>' +
       '<h2><span>Financial Clarity.</span> <span>Intelligent Decisions.</span> <span>Profitable Growth.</span></h2>' +
-      '<div class="brief"><div class="bh">Ringkasan 30 saat</div>' + bullets.map(function (b) { return '<div class="bl"><span class="dot ' + b[0] + '"></span><span>' + b[1] + '</span></div>'; }).join('') + '</div>' +
-      '<div class="cta"><button class="btn pri" data-act="nav" data-p="actions">' + ic(I.bolt) + 'Tindakan hari ini' + (reds.length ? ' · ' + reds.length + ' 🔴' : '') + '</button><button class="btn" data-act="nav" data-p="routine">' + ic(I.routine) + 'Rutin hari ini</button></div></div>' +
-      '<div class="r"><div class="health"><div class="hh"><span>Skor Kesihatan Kewangan</span>' + helpBtn('', 'skor') + '</div>' + gauge(hs.score, hs.grade, hs.score === null ? '' : 'Dikira daripada ' + hs.rated + ' KPI yang lengkap') +
-      '<div class="conf"><div class="ch"><span>Keyakinan Data ' + helpBtn('', 'yakin') + '</span><b>' + Math.round(hs.rated / hs.all * 100) + '%</b></div><div class="prog"><i style="width:' + (hs.rated / hs.all * 100) + '%;' + (hs.rated / hs.all < .7 ? 'background:linear-gradient(90deg,#ff8a3d,#ffb547)' : '') + '"></i></div><small>' + hs.rated + ' / ' + hs.all + ' KPI ada data lengkap · selebihnya ⚪ menunggu data atau keputusan</small></div>' +
+      '<div class="brief"><div class="bh">30-second summary</div>' + bullets.map(function (b) { return '<div class="bl"><span class="dot ' + b[0] + '"></span><span>' + b[1] + '</span></div>'; }).join('') + '</div>' +
+      '<div class="cta"><button class="btn pri" data-act="nav" data-p="actions">' + ic(I.bolt) + 'Today\'s actions' + (reds.length ? ' · ' + reds.length + ' 🔴' : '') + '</button><button class="btn" data-act="nav" data-p="routine">' + ic(I.routine) + 'Today\'s routine</button></div></div>' +
+      '<div class="r"><div class="health"><div class="hh"><span>Financial Health Score</span>' + helpBtn('', 'skor') + '</div>' + gauge(hs.score, hs.grade, hs.score === null ? '' : 'Based on ' + hs.rated + ' KPIs with complete data') +
+      '<div class="conf"><div class="ch"><span>Data confidence ' + helpBtn('', 'yakin') + '</span><b>' + Math.round(hs.rated / hs.all * 100) + '%</b></div><div class="prog"><i style="width:' + (hs.rated / hs.all * 100) + '%;' + (hs.rated / hs.all < .7 ? 'background:linear-gradient(90deg,#ff8a3d,#ffb547)' : '') + '"></i></div><small>' + hs.rated + ' / ' + hs.all + ' KPIs have complete data · the rest are ⚪ awaiting data or a decision</small></div>' +
       '<div class="pmini">' + P.map(function (p) { return '<button data-act="nav" data-p="' + p.p + '"><span class="dot ' + p.l + '"></span>' + p.n + '<em>' + LW[p.l] + '</em></button>'; }).join('') + '</div></div></div></section>';
 
     var pillars = '<section class="pillars">' + P.map(function (p) {
       return '<article class="glass pillar ' + p.l + '" data-act="nav" data-p="' + p.p + '"><div class="ph1"><span class="pi">' + ic(p.icon) + '</span><b>' + p.n + '</b>' + chip((p.l === 'g' ? '🟢 ' : p.l === 'y' ? '🟡 ' : p.l === 'r' ? '🔴 ' : '⚪ ') + LW[p.l]) + '</div>' +
-        '<div class="pv">' + esc(p.big) + helpBtn('', p.key) + '</div><div class="ps">' + esc(p.sub) + '</div><p class="pm">' + esc(p.say[p.l] || '') + '</p><div class="pf">Lihat butiran ' + ic(I.arrow) + '</div></article>';
+        '<div class="pv">' + esc(p.big) + helpBtn('', p.key) + '</div><div class="ps">' + esc(p.sub) + '</div><p class="pm">' + esc(p.say[p.l] || '') + '</p><div class="pf">View details ' + ic(I.arrow) + '</div></article>';
     }).join('') + '</section>';
 
-    var fresh = '<section class="glass fresh">' + (lv.pulse || []).slice(0, 6).map(function (p) { return '<div class="fr"><span class="dot ' + lamp(p.lamp) + '"></span><div><small>' + esc(p.what) + '</small><b>' + esc(p.date || '—') + (p.age !== '' && p.age !== undefined ? ' · ' + esc(p.age) + ' hari' : '') + '</b></div></div>'; }).join('') + '</section>';
+    var fresh = '<section class="glass fresh">' + (lv.pulse || []).slice(0, 6).map(function (p) { return '<div class="fr"><span class="dot ' + lamp(p.lamp) + '"></span><div><small>' + esc(p.what) + '</small><b>' + esc(p.date || '—') + (p.age !== '' && p.age !== undefined ? ' · ' + esc(p.age) + ' days' : '') + '</b></div></div>'; }).join('') + '</section>';
 
     var open = rules.filter(function (r) { var l = lamp(r.lamp); return l === 'r' || l === 'y'; }).slice(0, 5);
-    var todo = '<section class="grid2"><div class="glass pad"><div class="sec-h"><h3>Tindakan hari ini</h3><button class="btn sm" data-act="nav" data-p="actions">Semua tindakan ' + ic(I.arrow) + '</button></div>' +
-      (open.length ? open.map(function (r) { var l = lamp(r.lamp); return '<div class="todo-i ' + l + '"><span class="code">' + esc(r.code) + '</span><div><b>' + esc(r.trigger) + '</b><small>' + esc(r.action) + '</small></div><div class="tm"><span class="chip">' + esc(r.pic) + '</span><span class="chip ' + (l === 'r' ? 'r' : 'y') + '">' + esc(r.sla) + '</span></div></div>'; }).join('') : '<div class="empty">Tiada tindakan terbuka 🎉</div>') + '</div>' +
+    var todo = '<section class="grid2"><div class="glass pad"><div class="sec-h"><h3>Today\'s actions</h3><button class="btn sm" data-act="nav" data-p="actions">All actions ' + ic(I.arrow) + '</button></div>' +
+      (open.length ? open.map(function (r) { var l = lamp(r.lamp); return '<div class="todo-i ' + l + '"><span class="code">' + esc(r.code) + '</span><div><b>' + esc(r.trigger) + '</b><small>' + esc(r.action) + '</small></div><div class="tm"><span class="chip">' + esc(r.pic) + '</span><span class="chip ' + (l === 'r' ? 'r' : 'y') + '">' + esc(r.sla) + '</span></div></div>'; }).join('') : '<div class="empty">No open actions 🎉</div>') + '</div>' +
       rtToday() + '</section>';
 
     var chartSales = s7.map(function (r) { return { l: r.d, v: r.v, t: r.t }; });
-    var facts = [['Purata sehari (7 hari)', avg ? 'RM' + fnum(avg) : '—'], ['Sasaran harian purata', avgT ? 'RM' + fnum(avgT) : '—'], ['Hari terbaik', best ? best.d + ' · RM' + fnum(best.v) : '—'], ['Hari terlemah', low ? low.d + ' · RM' + fnum(low.v) : '—'], ['Trend 30 hari', lv.trend ? lv.trend.pct + ' sasaran' : '—']];
-    var row7 = '<section class="grid2"><div class="glass pad"><div class="sec-h"><h3>Jualan 7 hari terakhir ' + helpBtn('', 'jualan') + '</h3><span class="note">Bar kuning = bawah sasaran harian</span></div>' + barChart(chartSales, { a: 'Jualan operasi', b: 'Sasaran harian' }) + '</div>' +
-      '<div class="glass pad"><div class="sec-h"><h3>Fakta pantas</h3></div><div class="facts">' + facts.map(function (f) { return '<div><small>' + esc(f[0]) + '</small><b>' + esc(f[1]) + '</b></div>'; }).join('') + '</div></div></section>';
+    var facts = [['Daily average (7 days)', avg ? 'RM' + fnum(avg) : '—'], ['Average daily target', avgT ? 'RM' + fnum(avgT) : '—'], ['Best day', best ? best.d + ' · RM' + fnum(best.v) : '—'], ['Weakest day', low ? low.d + ' · RM' + fnum(low.v) : '—'], ['30-day trend', lv.trend ? lv.trend.pct + ' of target' : '—']];
+    var row7 = '<section class="grid2"><div class="glass pad"><div class="sec-h"><h3>Sales, last 7 days ' + helpBtn('', 'jualan') + '</h3><span class="note">Yellow bar = below daily target</span></div>' + barChart(chartSales, { a: 'Operating sales', b: 'Daily target' }) + '</div>' +
+      '<div class="glass pad"><div class="sec-h"><h3>Quick facts</h3></div><div class="facts">' + facts.map(function (f) { return '<div><small>' + esc(f[0]) + '</small><b>' + esc(f[1]) + '</b></div>'; }).join('') + '</div></div></section>';
 
-    var league = br.length ? '<section class="glass pad"><div class="sec-h"><h3>Kedudukan cawangan · % sasaran bulan ini ' + helpBtn('', 'sasaran') + '</h3><button class="btn sm" data-act="nav" data-p="profit">P&L cawangan ' + ic(I.arrow) + '</button></div>' +
+    var league = br.length ? '<section class="glass pad"><div class="sec-h"><h3>Branch ranking · % of this month\'s target ' + helpBtn('', 'sasaran') + '</h3><button class="btn sm" data-act="nav" data-p="profit">Branch P&L ' + ic(I.arrow) + '</button></div>' +
       hbars(brS.map(function (b) { return { l: b.n, v: b.pct, sub: 'RM' + fnum(b.sales) + (b.splh ? ' · SPLH ' + b.splh : '') + (b.fc ? ' · food cost ' + b.fc : '') }; }), { good: 100, warn: 80, mark: 100 }) +
-      '<details class="more"><summary>Lihat jadual penuh semua cawangan</summary>' + tbl({ head: (h.branches || {}).head || [], rows: (h.branches || {}).rows || [], totals: ((h.branches || {}).rows || []).map(function (r, i) { return /Semua/.test(r[0]) ? i : -1; }).filter(function (i) { return i >= 0; }) }) + '</details></section>' : '';
+      '<details class="more"><summary>View full table for all branches</summary>' + tbl({ head: (h.branches || {}).head || [], rows: (h.branches || {}).rows || [], totals: ((h.branches || {}).rows || []).map(function (r, i) { return /Semua/.test(r[0]) ? i : -1; }).filter(function (i) { return i >= 0; }) }) + '</details></section>' : '';
 
-    var kp = '<div class="kpis">' + (h.kpi || []).map(function (x) { return '<div class="kpi"><span>' + dot(x.lamp) + '</span><span class="k">' + esc(x.k) + ' ' + helpBtn(x.k) + '</span><span class="v">' + esc(x.v || '—') + '</span><span class="t">sasaran ' + esc(x.t || '—') + '</span></div>'; }).join('') + '</div>';
-    var row5 = '<section class="grid2"><div class="glass pad"><div class="sec-h"><h3>Kad skor 10 KPI</h3><span class="note">' + esc(h.kpiScore || '') + '</span></div>' + kp + '</div>' +
-      '<div class="glass pad"><div class="sec-h"><h3>Keputusan diperlukan daripada CEO</h3></div>' + (h.decisions || []).map(function (d) { return '<div class="dec"><span class="n">' + esc(d.n) + '</span><div><b style="font-size:13px">' + esc(d.t) + '</b><small>' + esc(d.why) + '</small></div>' + chip(d.st) + '</div>'; }).join('') + '</div></section>';
+    var kp = '<div class="kpis">' + (h.kpi || []).map(function (x) { return '<div class="kpi"><span>' + dot(x.lamp) + '</span><span class="k">' + esc(x.k) + ' ' + helpBtn(x.k) + '</span><span class="v">' + esc(x.v || '—') + '</span><span class="t">target ' + esc(x.t || '—') + '</span></div>'; }).join('') + '</div>';
+    var row5 = '<section class="grid2"><div class="glass pad"><div class="sec-h"><h3>10-KPI scorecard</h3><span class="note">' + esc(h.kpiScore || '') + '</span></div>' + kp + '</div>' +
+      '<div class="glass pad"><div class="sec-h"><h3>Decisions needed from the CEO</h3></div>' + (h.decisions || []).map(function (d) { return '<div class="dec"><span class="n">' + esc(d.n) + '</span><div><b style="font-size:13px">' + esc(d.t) + '</b><small>' + esc(d.why) + '</small></div>' + chip(d.st) + '</div>'; }).join('') + '</div></section>';
 
-    var ins = (h.insights || []).filter(function (x) { return x.fakta; }).length ? '<section class="glass pad"><div class="sec-h"><h3>Insight · Fakta → Maksud → Tindakan</h3></div><div class="ins">' + h.insights.filter(function (x) { return x.fakta; }).map(insightHtml).join('') + '</div></section>' : '';
+    var ins = (h.insights || []).filter(function (x) { return x.fakta; }).length ? '<section class="glass pad"><div class="sec-h"><h3>Insights · Fact → Meaning → Action</h3></div><div class="ins">' + h.insights.filter(function (x) { return x.fakta; }).map(insightHtml).join('') + '</div></section>' : '';
     var months = (h.months || []).filter(function (m) { return num(m.v); }).map(function (m) { return { l: m.m.replace(/ 20\d\d/, ''), v: num(m.v), t: num(m.t) }; });
-    var mon = months.length ? '<section class="glass pad"><div class="sec-h"><h3>Jualan bulanan 2026</h3><span class="note">Jualan operasi (tanpa SST, delivery 50%)</span></div>' + barChart(months, { a: 'Jualan', b: 'Sasaran', w: 1200, h: 230 }) + '</section>' : '';
+    var mon = months.length ? '<section class="glass pad"><div class="sec-h"><h3>Monthly sales 2026</h3><span class="note">Operating sales (excl. SST, delivery at 50%)</span></div>' + barChart(months, { a: 'Sales', b: 'Target', w: 1200, h: 230 }) + '</section>' : '';
 
-    view(todayStrip(h) + hero + pillars + fresh + todo + row7 + league + row5 + ins + mon + '<div class="note" style="text-align:center">Data pada ' + esc(h.asOf || '') + ' · dibaca terus daripada sheet FIRAX · ⚪ = menunggu data atau keputusan, bukan prestasi buruk</div>');
+    view(todayStrip(h) + hero + pillars + fresh + todo + row7 + league + row5 + ins + mon + '<div class="note" style="text-align:center">Data as of ' + esc(h.asOf || '') + ' · read directly from the FIRAX sheet · ⚪ = awaiting data or a decision, not poor performance</div>');
   }
   /** Baris cawangan daripada jadual Dashboard (kepala dikesan ikut nama). */
   function branchRows(h) {
@@ -566,32 +569,32 @@
   /** Jalur "Untuk anda hari ini": 4 jubin boleh klik — jawapan segera "apa saya perlu buat". */
   function todayStrip(h) {
     var red = h.actions && h.actions.counts ? num(h.actions.counts.r) || 0 : 0, rt = S.rt && S.rt.prog ? S.rt.prog.H : null;
-    var t1 = '<button class="glass tday" data-act="nav" data-p="routine"><small>Tugas hari ini</small><b>' + (rt ? (rt.all - rt.done ? (rt.all - rt.done) + ' belum' : '✓ Selesai') : '…') + '</b><span>' + (rt ? rt.done + ' / ' + rt.all + ' siap' : 'memuat…') + '</span></button>';
-    var t3 = '<button class="glass tday ' + (red ? 'r' : 'g') + '" data-act="nav" data-p="actions"><small>Amaran merah</small><b>' + (red ? red + ' isu 🔴' : 'Tiada 🔴') + '</b><span>' + (red ? 'Lihat siapa uruskan' : 'Semua terkawal') + '</span></button>';
+    var t1 = '<button class="glass tday" data-act="nav" data-p="routine"><small>Today\'s tasks</small><b>' + (rt ? (rt.all - rt.done ? (rt.all - rt.done) + ' to do' : '✓ Done') : '…') + '</b><span>' + (rt ? rt.done + ' / ' + rt.all + ' done' : 'loading…') + '</span></button>';
+    var t3 = '<button class="glass tday ' + (red ? 'r' : 'g') + '" data-act="nav" data-p="actions"><small>Red alerts</small><b>' + (red ? red + ' 🔴 issues' : 'No 🔴') + '</b><span>' + (red ? 'See who is handling them' : 'All under control') + '</span></button>';
     return '<section class="tdays">' + t1 + (canSee('pay') ? todayPay() : '') + t3 + (canSee('pay') ? todayWait() : '') + '</section>';
   }
   function todayPay() {
     var p = S.payT;
-    return '<button class="glass tday" id="today-pay" data-act="nav" data-p="pay"><small>Bayaran · ' + esc(p ? p.day + ' ' + p.ymd.slice(8, 10) + '/' + p.ymd.slice(5, 7) : 'run seterusnya') + '</small><b>' + (p ? (p.left ? 'RM' + fnum(p.due, 0) : '✓ Selesai') : '…') + '</b><span>' + (p ? (p.left ? p.left + ' penerima perlu dibayar' : 'Semua sudah dibayar') : 'memuat…') + '</span></button>';
+    return '<button class="glass tday" id="today-pay" data-act="nav" data-p="pay"><small>Payments · ' + esc(p ? p.day + ' ' + p.ymd.slice(8, 10) + '/' + p.ymd.slice(5, 7) : 'next run') + '</small><b>' + (p ? (p.left ? 'RM' + fnum(p.due, 0) : '✓ Done') : '…') + '</b><span>' + (p ? (p.left ? p.left + ' payees to pay' : 'All paid') : 'loading…') + '</span></button>';
   }
   function todayWait() {
     var p = S.payT;
-    return '<button class="glass tday' + (p && p.wait ? ' y' : '') + '" data-act="nav" data-p="pay"><small>Menunggu kelulusan</small><b>' + (p ? (p.wait ? p.wait + ' invois' : 'Tiada') : '…') + '</b><span>' + (p ? (p.wait ? 'RM' + fnum(p.waitAmt, 0) + ' · belum boleh dibayar' : 'Semua sudah disemak') : 'memuat…') + '</span></button>';
+    return '<button class="glass tday' + (p && p.wait ? ' y' : '') + '" data-act="nav" data-p="pay"><small>Pending approval</small><b>' + (p ? (p.wait ? p.wait + ' invoices' : 'None') : '…') + '</b><span>' + (p ? (p.wait ? 'RM' + fnum(p.waitAmt, 0) + ' · cannot be paid yet' : 'All reviewed') : 'loading…') + '</span></button>';
   }
   function rtToday() {
-    var r = S.rt; if (!r) return '<div class="glass pad" id="rt-today"><div class="sec-h"><h3>Rutin hari ini</h3></div><div class="skel" style="height:150px"></div></div>';
+    var r = S.rt; if (!r) return '<div class="glass pad" id="rt-today"><div class="sec-h"><h3>Today\'s routine</h3></div><div class="skel" style="height:150px"></div></div>';
     var t = r.tasks.filter(function (x) { return x.c === 'H'; }), p = r.prog.H;
-    return '<div class="glass pad" id="rt-today"><div class="sec-h"><h3>Rutin hari ini · ' + p.done + '/' + p.all + '</h3><button class="btn sm" data-act="nav" data-p="routine">Buka rutin ' + ic(I.arrow) + '</button></div><div class="prog" style="margin-bottom:12px"><i style="width:' + (p.done / p.all * 100) + '%"></i></div>' +
+    return '<div class="glass pad" id="rt-today"><div class="sec-h"><h3>Today\'s routine · ' + p.done + '/' + p.all + '</h3><button class="btn sm" data-act="nav" data-p="routine">Open routine ' + ic(I.arrow) + '</button></div><div class="prog" style="margin-bottom:12px"><i style="width:' + (p.done / p.all * 100) + '%"></i></div>' +
       t.map(function (x) { return '<div class="rt-i' + (x.ok ? ' ok' : '') + '"><span class="ck">' + (x.ok ? '✓' : '') + '</span><div><b>' + esc(x.t) + '</b><small>' + esc(x.who) + ' · ' + esc(x.when) + (x.auto ? ' · ' + esc(x.auto.text) : '') + '</small></div></div>'; }).join('') + '</div>';
   }
   function insightHtml(x) {
-    return '<div class="insight"><div class="f"><b>Fakta</b>' + esc(x.fakta) + '</div>' + (x.maksud ? '<div class="m"><b>Maksud</b>' + esc(x.maksud) + '</div>' : '') + (x.tindakan ? '<div class="a"><b>Tindakan</b>' + esc(x.tindakan) + '</div>' : '') + '</div>';
+    return '<div class="insight"><div class="f"><b>Fact</b>' + esc(x.fakta) + '</div>' + (x.maksud ? '<div class="m"><b>Meaning</b>' + esc(x.maksud) + '</div>' : '') + (x.tindakan ? '<div class="a"><b>Action</b>' + esc(x.tindakan) + '</div>' : '') + '</div>';
   }
 
   /* ======================= halaman modul (generik, ikut tab sheet) ======================= */
   function tbl(b, opt) {
     opt = opt || {}; var head = b.head || [], rows = b.rows || [], tot = b.totals || [];
-    if (!rows.length) return '<div class="empty">Tiada baris</div>';
+    if (!rows.length) return '<div class="empty">No rows</div>';
     var numc = head.map(function (_, c) { var vs = rows.map(function (r) { return String(r[c] || '').trim(); }).filter(Boolean); return vs.length && vs.filter(isNumCell).length / vs.length >= .6; });
     var lampc = head.map(function (_, c) { var vs = rows.map(function (r) { return String(r[c] || '').trim(); }).filter(Boolean); return vs.length && vs.every(function (v) { return /^[🔴🟡🟠🟢⚪✅⏳]️?$/.test(v); }); });
     var lim = opt.all ? rows.length : Math.min(rows.length, opt.lim || 15);
@@ -602,8 +605,8 @@
         var v = r[c] === undefined ? '' : String(r[c]);
         if (lampc[c]) return '<td class="c">' + dot(v) + '</td>';
         if (numc[c]) return '<td class="n' + (/^\s*(\(|-|−)\d/.test(v) || /^RM\s?-/.test(v) ? ' neg' : '') + '">' + show(v) + '</td>';
-        if (/^https:\/\//.test(v)) return '<td><a href="' + esc(v) + '" target="_blank" rel="noopener">Buka ↗</a></td>';
-        if (/^[A-Z]\d{2}[a-z]?$/.test(v)) return '<td class="n"><span class="chip w" title="Menunggu keputusan ' + esc(v) + '">Belum diputuskan</span></td>';
+        if (/^https:\/\//.test(v)) return '<td><a href="' + esc(v) + '" target="_blank" rel="noopener">Open ↗</a></td>';
+        if (/^[A-Z]\d{2}[a-z]?$/.test(v)) return '<td class="n"><span class="chip w" title="Awaiting decision ' + esc(v) + '">Not decided yet</span></td>';
         if (c === 0 && !numc[c]) { var hb = helpBtn(v); if (hb) return '<td class="' + (v.length > 46 ? 'wrap' : 'first') + '">' + esc(v) + hb + '</td>'; }
         var l = lamp(v);
         if (l && v.length < 40) return '<td>' + chip(v) + '</td>';
@@ -611,7 +614,7 @@
       }).join('') + '</tr>';
     }
     h += '</tbody></table></div>';
-    if (rows.length > lim) h += '<div style="margin-top:10px"><button class="btn sm" data-act="showAll" data-b="' + esc(opt.id || '') + '">Tunjuk semua ' + rows.length + ' baris</button></div>';
+    if (rows.length > lim) h += '<div style="margin-top:10px"><button class="btn sm" data-act="showAll" data-b="' + esc(opt.id || '') + '">Show all ' + rows.length + ' rows</button></div>';
     return h;
   }
   /** Carta automatik untuk jadual masa (Bulan/Minggu/Tarikh) dengan lajur nombor. */
@@ -630,7 +633,7 @@
     return '<div style="margin-bottom:14px">' + barChart(data, { a: head[pick], b: tgt >= 0 ? head[tgt] : '' }) + '</div>';
   }
   function moduleTab(t, bi) {
-    if (t.missing) return '<div class="glass pad"><div class="err">Tab "' + esc(t.name) + '" tidak ditemui dalam sheet FIRAX.</div></div>';
+    if (t.missing) return '<div class="glass pad"><div class="err">Tab "' + esc(t.name) + '" not found in the FIRAX sheet.</div></div>';
     var cards = (t.cards || []).length ? '<section class="cards">' + t.cards.map(function (c) { var l = lamp(c.n) || lamp(c.v); return '<div class="glass card ' + l + '"><div class="l">' + esc(c.l) + helpBtn(c.l) + '</div><div class="v">' + esc(unemo(c.v) || c.v) + '</div><div class="nn">' + dot(c.n) + ' ' + esc(unemo(c.n)) + '</div></div>'; }).join('') + '</section>' : '';
     var bl = (t.blocks || []).map(function (b, i) { b._i = i; return b; });
     var insights = bl.filter(function (b) { return b.type === 'insight'; });
@@ -640,7 +643,7 @@
       if (b.type === 'note') return '<div class="notebox">' + esc(b.text) + '</div>';
       return '<section class="glass block"><h3>' + esc(b.title || t.title) + '</h3>' + autoChart(b) + tbl(b, { id: id, all: S.all && S.all[id] }) + (b.note ? '<div class="bnote">' + esc(b.note) + '</div>' : '') + '</section>';
     }).join('');
-    return cards + top + blocks + (t.errs ? '<div class="notebox">⚠ ' + t.errs + ' sel dalam tab ini ada ralat formula dan dipaparkan sebagai "—". Maklumkan Finance Manager supaya formula dibaiki.</div>' : '');
+    return cards + top + blocks + (t.errs ? '<div class="notebox">⚠ ' + t.errs + ' cells in this tab have formula errors and are shown as "—". Tell the Finance Manager so the formulas can be fixed.</div>' : '');
   }
   function renderModule() {
     var key = S.page;
@@ -653,7 +656,7 @@
     var head = '<section class="glass ph"><div class="hero-art" style="position:absolute;inset:0;opacity:.35;pointer-events:none">' + heroArt('ph' + key) + '</div><div style="position:relative;display:flex;flex-direction:column;gap:10px">' +
       '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start"><div><div class="kicker">' + esc(t.name) + '</div><h2 style="margin-top:4px">' + esc(t.title || t.name) + '</h2></div>' + (t.status ? chip(t.status) : '') + '</div>' +
       (t.sub ? '<p>' + esc(t.sub) + '</p>' : '') + guideBox(t.name) + (t.alert ? '<div class="err" style="color:#ffcf8a;background:rgba(255,181,71,.08);border-color:rgba(255,181,71,.3)">' + esc(t.alert) + '</div>' : '') + tabs + '</div></section>';
-    view(head + moduleTab(t, key + ti) + '<div class="note" style="text-align:center">Data pada ' + esc(d.asOf || '') + ' · tab "' + esc(t.name) + '"</div>');
+    view(head + moduleTab(t, key + ti) + '<div class="note" style="text-align:center">Data as of ' + esc(d.asOf || '') + ' · tab "' + esc(t.name) + '"</div>');
   }
   A.tab = function (el) { S.tab[S.page] = +el.getAttribute('data-i'); moduleView(S.pages[S.page]); };
   A.showAll = function (el) { S.all = S.all || {}; S.all[el.getAttribute('data-b')] = true; if (S.page === 'settings') renderSettings(); else moduleView(S.pages[S.page]); };
@@ -666,31 +669,31 @@
   function actionsView(a) {
     var c = a.counts || {}, f = S.actF || 'open';
     var list = (a.rules || []).filter(function (r) { var l = lamp(r.lamp); return f === 'all' ? true : f === 'open' ? (l === 'r' || l === 'y') : l === f; });
-    var sum = '<section class="sumtiles">' + [['r', '🔴', 'Tindakan sekarang', c.r], ['y', '🟡', 'Pantau', c.y], ['w', '⚪', 'Menunggu data / keputusan', c.w], ['g', '🟢', 'OK', c.g]].map(function (x) {
+    var sum = '<section class="sumtiles">' + [['r', '🔴', 'Act now', c.r], ['y', '🟡', 'Watch', c.y], ['w', '⚪', 'Awaiting data / decision', c.w], ['g', '🟢', 'OK', c.g]].map(function (x) {
       return '<button class="glass sumtile" style="text-align:left;color:inherit;' + (f === x[0] ? 'border-color:rgba(47,224,122,.5)' : '') + '" data-act="actF" data-f="' + x[0] + '"><span class="dot ' + x[0] + '" style="width:14px;height:14px"></span><div><b>' + esc(x[3] || 0) + '</b><small>' + esc(x[2]) + '</small></div></button>';
     }).join('') + '</section>';
-    var tabs = '<div class="tabs">' + [['open', 'Terbuka (🔴 + 🟡)'], ['all', 'Semua 12 peraturan'], ['r', 'Merah'], ['y', 'Kuning'], ['w', 'Menunggu'], ['g', 'OK']].map(function (x) { return '<button class="' + (f === x[0] ? 'on' : '') + '" data-act="actF" data-f="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div>';
+    var tabs = '<div class="tabs">' + [['open', 'Open (🔴 + 🟡)'], ['all', 'All 12 rules'], ['r', 'Red'], ['y', 'Amber'], ['w', 'Awaiting'], ['g', 'OK']].map(function (x) { return '<button class="' + (f === x[0] ? 'on' : '') + '" data-act="actF" data-f="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div>';
     var items = list.length ? list.map(function (r) {
       var l = lamp(r.lamp) || 'w';
       var upd = a.canEdit ? '<div class="upd"><label class="note">Status</label><select id="st-' + esc(r.code) + '">' + opts([''].concat(a.statuses || []), r.status) + '</select>' +
-        '<textarea id="nt-' + esc(r.code) + '" placeholder="Bukti / catatan (wajib untuk Selesai)"></textarea><button class="btn pri sm" style="justify-content:center" data-act="actSave" data-c="' + esc(r.code) + '">Kemas kini</button>' +
-        (r.note ? '<div class="note">Terakhir: ' + esc(r.note) + '</div>' : '') + '</div>' : '<div class="upd"><div class="note">Status: <b>' + esc(r.status || 'Baru') + '</b></div>' + (r.note ? '<div class="note">' + esc(r.note) + '</div>' : '') + '</div>';
+        '<textarea id="nt-' + esc(r.code) + '" placeholder="Evidence / notes (required for Done)"></textarea><button class="btn pri sm" style="justify-content:center" data-act="actSave" data-c="' + esc(r.code) + '">Update</button>' +
+        (r.note ? '<div class="note">Last: ' + esc(r.note) + '</div>' : '') + '</div>' : '<div class="upd"><div class="note">Status: <b>' + esc(r.status || 'Baru') + '</b></div>' + (r.note ? '<div class="note">' + esc(r.note) + '</div>' : '') + '</div>';
       return '<article class="act ' + l + '"><div class="edge"></div><div class="body"><div><div class="code">' + esc(r.code) + ' · ' + dot(r.lamp) + '</div><h4>' + esc(r.trigger) + '</h4>' +
-        '<div class="todo">' + esc(r.action && r.action !== '—' ? r.action : 'Tiada tindakan diperlukan sekarang.') + '</div><div class="vt">Kini <b style="color:#ecf7f0">' + esc(r.value || '—') + '</b> · had ' + esc(r.threshold || '—') + '</div>' + (r.how ? '<details class="how"><summary>Cara selesaikan (' + r.how.steps.length + ' langkah)</summary><p class="note">' + esc(r.how.why) + '</p><ol>' + r.how.steps.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ol></details>' : '') +
-        '<div class="meta"><span class="chip">' + esc(r.pic) + '</span><span class="chip y">SLA ' + esc(r.sla) + '</span>' + (r.status ? '<span class="chip g">' + esc(r.status) + '</span>' : '') + (r.url ? '<a class="chip g" href="' + esc(r.url) + '" target="_blank" rel="noopener">Selesaikan sekarang ↗</a>' : '') + '</div></div>' + upd + '</div></article>';
-    }).join('') : '<div class="glass pad"><div class="empty"><b>Tiada apa-apa di sini 🎉</b></div></div>';
-    view(sum + '<section class="glass pad">' + tabs + '<p class="note" style="margin:10px 0 0">Ambang dan PIC ditetapkan di sheet FIRAX (Tetapan). Item 🔴 yang belum selesai dibawa ke Isu Berbangkit WAR. Kemas kini di sini menulis Status dan bukti ke tab Action Engine.</p></section><section class="acts">' + items + '</section><div class="note" style="text-align:center">Data pada ' + esc(a.asOf || '') + '</div>');
+        '<div class="todo">' + esc(r.action && r.action !== '—' ? r.action : 'No action needed right now.') + '</div><div class="vt">Now <b style="color:#ecf7f0">' + esc(r.value || '—') + '</b> · limit ' + esc(r.threshold || '—') + '</div>' + (r.how ? '<details class="how"><summary>How to resolve (' + r.how.steps.length + ' steps)</summary><p class="note">' + esc(r.how.why) + '</p><ol>' + r.how.steps.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ol></details>' : '') +
+        '<div class="meta"><span class="chip">' + esc(r.pic) + '</span><span class="chip y">SLA ' + esc(r.sla) + '</span>' + (r.status ? '<span class="chip g">' + esc(r.status) + '</span>' : '') + (r.url ? '<a class="chip g" href="' + esc(r.url) + '" target="_blank" rel="noopener">Resolve now ↗</a>' : '') + '</div></div>' + upd + '</div></article>';
+    }).join('') : '<div class="glass pad"><div class="empty"><b>Nothing here 🎉</b></div></div>';
+    view(sum + '<section class="glass pad">' + tabs + '<p class="note" style="margin:10px 0 0">Thresholds and owners are set in the FIRAX sheet (Settings). Unresolved 🔴 items are carried to the WAR outstanding issues. Updates here write the Status and evidence to the Action Engine tab.</p></section><section class="acts">' + items + '</section><div class="note" style="text-align:center">Data as of ' + esc(a.asOf || '') + '</div>');
   }
   A.actF = function (el) { S.actF = el.getAttribute('data-f'); actionsView(S.acts); };
   A.actSave = function (el) {
     var c = el.getAttribute('data-c'), st = val('st-' + c), nt = val('nt-' + c);
-    if (!st) return toast('Pilih status dahulu.', true);
+    if (!st) return toast('Choose a status first.', true);
     el.disabled = true;
-    rpc('fxActionSave', [S.token, c, st, nt]).then(function () { toast(c + ' dikemas kini'); S.acts = null; S.home = null; renderActions(); }).catch(function (e) { el.disabled = false; toast(e.error, true); });
+    rpc('fxActionSave', [S.token, c, st, nt]).then(function () { toast(c + ' updated'); S.acts = null; S.home = null; renderActions(); }).catch(function (e) { el.disabled = false; toast(e.error, true); });
   };
 
   /* ======================= Settings ======================= */
-  var ROLES = [['CEO', 'CEO & Founder'], ['FM', 'Finance Manager'], ['ACC', 'Staf Akaun'], ['BM', 'Pengurus Cawangan'], ['VIEW', 'Paparan sahaja']];
+  var ROLES = [['CEO', 'CEO & Founder'], ['FM', 'Finance Manager'], ['ACC', 'Accounts Staff'], ['BM', 'Branch Manager'], ['VIEW', 'View only']];
   function renderSettings() {
     var pU = S.me.role === 'CEO' ? rpc('fxUsers', [S.token]) : Promise.resolve(null);
     var pT = S.pages.settings ? Promise.resolve(S.pages.settings) : rpc('fxPage', [S.token, 'settings']).then(function (d) { S.pages.settings = d; return d; });
@@ -698,44 +701,44 @@
   }
   function settingsView(users, d) {
     var ti = S.tab.settings || 0, t = d.tabs[Math.min(ti, d.tabs.length - 1)];
-    var u = users ? '<section class="glass block"><h3>Pengguna & akses</h3><p class="note" style="margin:-4px 0 12px">Nama + PIN 4 digit. PIN admin hanya ditulis ke lajur N tab <b>APP PENGGUNA</b> dan wajib ditukar oleh pengguna semasa log masuk pertama. PIN tidak pernah dipaparkan dalam FIRAX.</p>' +
-      '<div class="tw"><table class="t"><thead><tr><th>Nama</th><th>Peranan</th><th>Status</th><th>PIN</th><th>Log masuk terakhir</th><th></th></tr></thead><tbody>' +
-      users.map(function (x) { return '<tr><td><b>' + esc(x.name) + '</b><div class="note">' + esc(x.jawatan) + '</div></td><td>' + esc(x.roleLabel) + '</td><td>' + (x.active ? chip('🟢 Aktif') : chip('⚪ Tidak aktif')) + '</td><td>' + (x.mustChange ? chip('🟡 Wajib tukar') : x.pinSet ? chip('🟢 Ditetapkan') : x.codePending ? chip('🟡 Kod dihantar') : chip('⚪ Belum')) + '</td><td>' + show(x.last) + '</td><td style="white-space:nowrap"><button class="btn sm" data-act="userEdit" data-id="' + esc(x.id) + '">Ubah</button> <button class="btn sm" data-act="userReset" data-id="' + esc(x.id) + '">Reset PIN</button></td></tr>'; }).join('') +
-      '</tbody></table></div><div class="row-btn" style="justify-content:flex-start"><button class="btn pri" data-act="userEdit">+ Tambah pengguna</button></div></section>' : '';
-    var tabs = '<section class="glass pad"><div class="tabs">' + d.tabs.map(function (x, i) { return '<button class="' + (x === t ? 'on' : '') + '" data-act="setTab" data-i="' + i + '">' + esc(x.name) + '</button>'; }).join('') + '</div><p class="note" style="margin:10px 0 0">Ambang, PIC dan pautan diubah di sheet FIRAX (sel kuning). FIRAX memaparkannya di sini untuk dibaca sahaja.</p></section>';
+    var u = users ? '<section class="glass block"><h3>Users & access</h3><p class="note" style="margin:-4px 0 12px">Name + 4-digit PIN. An admin PIN is only written to column N of the <b>APP PENGGUNA</b> tab and must be changed by the user at first sign-in. PINs are never shown in FIRAX.</p>' +
+      '<div class="tw"><table class="t"><thead><tr><th>Name</th><th>Role</th><th>Status</th><th>PIN</th><th>Last sign-in</th><th></th></tr></thead><tbody>' +
+      users.map(function (x) { return '<tr><td><b>' + esc(x.name) + '</b><div class="note">' + esc(x.jawatan) + '</div></td><td>' + esc(x.roleLabel) + '</td><td>' + (x.active ? chip('🟢 Active') : chip('⚪ Inactive')) + '</td><td>' + (x.mustChange ? chip('🟡 Must change') : x.pinSet ? chip('🟢 Set') : x.codePending ? chip('🟡 Code sent') : chip('⚪ Not set')) + '</td><td>' + show(x.last) + '</td><td style="white-space:nowrap"><button class="btn sm" data-act="userEdit" data-id="' + esc(x.id) + '">Edit</button> <button class="btn sm" data-act="userReset" data-id="' + esc(x.id) + '">Reset PIN</button></td></tr>'; }).join('') +
+      '</tbody></table></div><div class="row-btn" style="justify-content:flex-start"><button class="btn pri" data-act="userEdit">+ Add user</button></div></section>' : '';
+    var tabs = '<section class="glass pad"><div class="tabs">' + d.tabs.map(function (x, i) { return '<button class="' + (x === t ? 'on' : '') + '" data-act="setTab" data-i="' + i + '">' + esc(x.name) + '</button>'; }).join('') + '</div><p class="note" style="margin:10px 0 0">Thresholds, owners and links are changed in the FIRAX sheet (yellow cells). FIRAX shows them here read-only.</p></section>';
     view(u + tabs + moduleTab(t, 'set' + ti));
   }
   A.setTab = function (el) { S.tab.settings = +el.getAttribute('data-i'); settingsView(S.users, S.pages.settings); };
   A.userEdit = function (el) {
     var id = el.getAttribute('data-id'), x = id ? (S.users || []).filter(function (u) { return u.id === id; })[0] : { role: 'ACC', active: true };
-    modal('<h3>' + (id ? 'Ubah pengguna' : 'Tambah pengguna') + '</h3><div style="margin-top:12px">' + field('Nama', '<input id="un" value="' + esc(x.name || '') + '">') + field('Peranan', '<select id="ur">' + opts(ROLES, x.role) + '</select>') + field('Jawatan', '<input id="uj" value="' + esc(x.jawatan || '') + '">') +
-      (id ? field('Status', '<select id="ua">' + opts([['1', 'Aktif'], ['0', 'Tidak aktif']], x.active ? '1' : '0') + '</select>') : field('Cara akses', '<select id="um">' + opts([['pin', 'PIN admin (ditulis ke APP PENGGUNA lajur N)'], ['code', 'Kod aktivasi sekali guna (72 jam)']], 'pin') + '</select>')) +
-      '</div><div id="um2"></div><div class="row-btn"><button class="btn" data-act="closeModal">Batal</button><button class="btn pri" data-act="userSave" data-id="' + esc(id || '') + '">Simpan</button></div>');
+    modal('<h3>' + (id ? 'Edit user' : 'Add user') + '</h3><div style="margin-top:12px">' + field('Name', '<input id="un" value="' + esc(x.name || '') + '">') + field('Role', '<select id="ur">' + opts(ROLES, x.role) + '</select>') + field('Position', '<input id="uj" value="' + esc(x.jawatan || '') + '">') +
+      (id ? field('Status', '<select id="ua">' + opts([['1', 'Active'], ['0', 'Inactive']], x.active ? '1' : '0') + '</select>') : field('Access method', '<select id="um">' + opts([['pin', 'Admin PIN (written to APP PENGGUNA column N)'], ['code', 'One-time activation code (72 hours)']], 'pin') + '</select>')) +
+      '</div><div id="um2"></div><div class="row-btn"><button class="btn" data-act="closeModal">Cancel</button><button class="btn pri" data-act="userSave" data-id="' + esc(id || '') + '">Save</button></div>');
   };
   A.userSave = function (el) {
     var id = el.getAttribute('data-id');
     el.disabled = true;
     rpc('fxUserSave', [S.token, { id: id || '', name: val('un'), role: val('ur'), jawatan: val('uj'), caw: 'SEMUA', active: id ? val('ua') === '1' : true, method: val('um') }]).then(function (r) {
-      if (r.code) modal('<h3>Kod aktivasi</h3><p class="note">Beri kod ini kepada <b>' + esc(r.name) + '</b>. Kod sah sekali sahaja dan tamat ' + esc(r.tamat) + '.</p><div style="font-size:28px;letter-spacing:.2em;font-weight:700;text-align:center;margin:16px 0;color:#2fe07a">' + esc(r.code) + '</div><div class="row-btn"><button class="btn pri" data-act="closeModal">Selesai</button></div>');
-      else { closeModal(); toast(r.pinRecorded ? 'Pengguna ditambah — PIN ditulis ke APP PENGGUNA lajur N' : 'Disimpan'); }
+      if (r.code) modal('<h3>Activation code</h3><p class="note">Give this code to <b>' + esc(r.name) + '</b>. It can be used once only and expires ' + esc(r.tamat) + '.</p><div style="font-size:28px;letter-spacing:.2em;font-weight:700;text-align:center;margin:16px 0;color:#2fe07a">' + esc(r.code) + '</div><div class="row-btn"><button class="btn pri" data-act="closeModal">Done</button></div>');
+      else { closeModal(); toast(r.pinRecorded ? 'User added — PIN written to APP PENGGUNA column N' : 'Saved'); }
       renderSettings();
     }).catch(function (e) { el.disabled = false; $('#um2').innerHTML = '<div class="err">' + esc(e.error) + '</div>'; });
   };
   A.userReset = function (el) {
     var id = el.getAttribute('data-id');
-    modal('<h3>Reset PIN</h3><p class="note">PIN lama tidak boleh digunakan serta-merta.</p><div class="row-btn"><button class="btn" data-act="doReset" data-id="' + esc(id) + '" data-m="code">Kod aktivasi</button><button class="btn pri" data-act="doReset" data-id="' + esc(id) + '" data-m="pin">PIN admin baharu</button></div>');
+    modal('<h3>Reset PIN</h3><p class="note">The old PIN stops working immediately.</p><div class="row-btn"><button class="btn" data-act="doReset" data-id="' + esc(id) + '" data-m="code">Activation code</button><button class="btn pri" data-act="doReset" data-id="' + esc(id) + '" data-m="pin">New admin PIN</button></div>');
   };
   A.doReset = function (el) {
     el.disabled = true;
     rpc('fxUserCode', [S.token, el.getAttribute('data-id'), el.getAttribute('data-m')]).then(function (r) {
-      if (r.code) modal('<h3>Kod aktivasi</h3><div style="font-size:28px;letter-spacing:.2em;font-weight:700;text-align:center;margin:16px 0;color:#2fe07a">' + esc(r.code) + '</div><p class="note">Tamat ' + esc(r.tamat) + '.</p><div class="row-btn"><button class="btn pri" data-act="closeModal">Selesai</button></div>');
-      else { closeModal(); toast('PIN baharu ditulis ke APP PENGGUNA lajur N'); }
+      if (r.code) modal('<h3>Activation code</h3><div style="font-size:28px;letter-spacing:.2em;font-weight:700;text-align:center;margin:16px 0;color:#2fe07a">' + esc(r.code) + '</div><p class="note">Expires ' + esc(r.tamat) + '.</p><div class="row-btn"><button class="btn pri" data-act="closeModal">Done</button></div>');
+      else { closeModal(); toast('New PIN written to APP PENGGUNA column N'); }
       renderSettings();
     }).catch(function (e) { el.disabled = false; toast(e.error, true); });
   };
 
-  /* ======================= Rutin Kewangan (SOP) ======================= */
-  var CADS = [['H', 'Harian', 'Setiap hari bekerja'], ['M', 'Mingguan', 'Ahad transaksi · bayaran Ahad/Selasa/Rabu'], ['B', 'Bulanan', 'Bulan ini · tutup buku'], ['T', 'Tahunan', 'Tahun ini']];
+  /* ======================= Finance Routine (SOP) ======================= */
+  var CADS = [['H', 'Daily', 'Every working day'], ['M', 'Weekly', 'Sunday transactions · payments Sunday/Tuesday/Wednesday'], ['B', 'Monthly', 'This month · month-end close'], ['T', 'Annual', 'This year']];
   function renderRoutine() { needRt().then(routineView).catch(fail); }
   function routineView(r) {
     var f = S.rtF || 'H', list = r.tasks.filter(function (t) { return t.c === f; });
@@ -743,61 +746,61 @@
       var p = r.prog[c[0]], pc = p.all ? Math.round(p.done / p.all * 100) : 0;
       return '<button class="glass sumtile rt-t' + (f === c[0] ? ' on' : '') + '" data-act="rtF" data-f="' + c[0] + '"><div class="mring">' + ring(pc) + '</div><div><b>' + p.done + '/' + p.all + '</b><small>' + c[1] + ' · ' + c[2] + '</small></div></button>';
     }).join('') + '</section>';
-    var intro = '<section class="glass pad rt-intro"><div><div class="kicker">' + esc(r.today) + '</div><h3 style="margin:6px 0">Rutin kewangan standard Sofwah</h3>' +
-      '<p class="note" style="margin:0">Ikut senarai ini setiap hari dan buku akan sentiasa bersih, bulan boleh ditutup dalam 3 hari bekerja (amalan terbaik antarabangsa), dan CEO mendapat angka yang tepat. ' +
-      'Tugas bertanda <span class="chip g">Sistem: selesai</span> disahkan automatik oleh FIRAX daripada data. Tugas lain ditanda sendiri selepas dibuat.</p></div></section>';
+    var intro = '<section class="glass pad rt-intro"><div><div class="kicker">' + esc(r.today) + '</div><h3 style="margin:6px 0">Sofwah standard finance routine</h3>' +
+      '<p class="note" style="margin:0">Follow this list every day and the books stay clean, the month can be closed within 3 working days (international best practice), and the CEO gets accurate figures. ' +
+      'Tasks marked <span class="chip g">System: done</span> are verified automatically by FIRAX from the data. Mark other tasks yourself once completed.</p></div></section>';
     var items = list.map(function (t) {
       var st = t.ok ? 'ok' : t.auto && t.auto.s === 'todo' ? 'todo' : '';
-      return '<article class="glass rt ' + st + '"><button class="rck' + (t.ok ? ' on' : '') + '" ' + (r.canEdit && !(t.auto && t.auto.s === 'ok') ? 'data-act="rtTick" data-id="' + t.id + '" data-d="' + (t.done ? 0 : 1) + '"' : 'disabled') + ' aria-label="Tanda selesai">' + (t.ok ? '✓' : '') + '</button>' +
+      return '<article class="glass rt ' + st + '"><button class="rck' + (t.ok ? ' on' : '') + '" ' + (r.canEdit && !(t.auto && t.auto.s === 'ok') ? 'data-act="rtTick" data-id="' + t.id + '" data-d="' + (t.done ? 0 : 1) + '"' : 'disabled') + ' aria-label="Mark as done">' + (t.ok ? '✓' : '') + '</button>' +
         '<div class="rb"><div class="rh"><span class="code">' + esc(t.id) + '</span><h4>' + esc(t.t) + '</h4></div>' +
         '<div class="meta"><span class="chip">' + esc(t.who) + '</span><span class="chip y">' + ic(I.clock).replace('<svg', '<svg width="12" height="12"') + esc(t.when) + '</span>' +
         (t.auto ? '<span class="chip ' + (t.auto.s === 'ok' ? 'g' : t.auto.s === 'todo' ? 'r' : 'w') + '">' + esc(t.auto.text) + '</span>' : '') +
         (t.done ? '<span class="chip g">✓ ' + esc(t.done.by) + ' · ' + esc(t.done.at) + '</span>' : '') + '</div>' +
         '<p class="why">' + esc(t.why) + '</p>' +
-        '<details class="how"' + (t.ok ? '' : ' open') + '><summary>Langkah-langkah (' + t.steps.length + ')</summary><ol>' + t.steps.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ol></details>' +
-        (t.done && t.done.note ? '<div class="note">Catatan: ' + esc(t.done.note) + '</div>' : '') +
-        '<div class="ra"><button class="btn sm" data-act="nav" data-p="' + esc(t.page) + '">Buka halaman berkaitan ' + ic(I.arrow) + '</button>' +
-        (r.canEdit && !(t.auto && t.auto.s === 'ok') ? (t.done ? '<button class="btn sm" data-act="rtTick" data-id="' + t.id + '" data-d="0">Batal tanda</button>' : '<input class="inp sm" id="rn-' + t.id + '" placeholder="Catatan ringkas (pilihan)"><button class="btn pri sm" data-act="rtTick" data-id="' + t.id + '" data-d="1">Tanda selesai</button>') : '') + '</div></div></article>';
+        '<details class="how"' + (t.ok ? '' : ' open') + '><summary>Steps (' + t.steps.length + ')</summary><ol>' + t.steps.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ol></details>' +
+        (t.done && t.done.note ? '<div class="note">Note: ' + esc(t.done.note) + '</div>' : '') +
+        '<div class="ra"><button class="btn sm" data-act="nav" data-p="' + esc(t.page) + '">Open related page ' + ic(I.arrow) + '</button>' +
+        (r.canEdit && !(t.auto && t.auto.s === 'ok') ? (t.done ? '<button class="btn sm" data-act="rtTick" data-id="' + t.id + '" data-d="0">Undo</button>' : '<input class="inp sm" id="rn-' + t.id + '" placeholder="Short note (optional)"><button class="btn pri sm" data-act="rtTick" data-id="' + t.id + '" data-d="1">Mark as done</button>') : '') + '</div></div></article>';
     }).join('');
-    view(tiles + intro + '<section class="rts">' + items + '</section><div class="note" style="text-align:center">Tanda disimpan dalam tab APP RUTIN mengikut tempoh (' + esc(r.prog[f].key) + '). Rekod siapa dan bila ditanda untuk jejak audit.</div>');
+    view(tiles + intro + '<section class="rts">' + items + '</section><div class="note" style="text-align:center">Ticks are saved in the APP RUTIN tab by period (' + esc(r.prog[f].key) + '). Who ticked and when is recorded for the audit trail.</div>');
   }
   A.rtF = function (el) { S.rtF = el.getAttribute('data-f'); routineView(S.rt); };
   A.rtTick = function (el) {
     var id = el.getAttribute('data-id'), d = el.getAttribute('data-d') === '1', note = val('rn-' + id);
     el.disabled = true;
-    rpc('fxRoutineSave', [S.token, id, d, note]).then(function () { toast(d ? id + ' ditanda selesai' : id + ' dibatalkan'); S.rt = null; renderRoutine(); }).catch(function (e) { el.disabled = false; toast(e.error, true); });
+    rpc('fxRoutineSave', [S.token, id, d, note]).then(function () { toast(d ? id + ' marked as done' : id + ' undone'); S.rt = null; renderRoutine(); }).catch(function (e) { el.disabled = false; toast(e.error, true); });
   };
 
-  /* ======================= Panduan & Kamus ======================= */
+  /* ======================= Guide & Glossary ======================= */
   var BENCH = [
-    ['Food cost %', 'Kos bahan ÷ jualan', '28% – 35%', 'food'],
-    ['SCOR (kos staf %)', 'Kos staf ÷ jualan', '25% – 35%', 'scor'],
-    ['Prime cost', '(Bahan + staf) ÷ jualan', '≤ 60% – 65%', 'prime'],
-    ['Sewa', 'Sewa ÷ jualan', '≤ 6% – 10%', ''],
-    ['Margin bersih', 'Untung bersih ÷ jualan', '5% – 15%', 'margin'],
-    ['Runway tunai', 'Baki tunai ÷ opex seminggu', '≥ 8 minggu', 'runway'],
-    ['Breakeven', 'Jualan ÷ breakeven', '≥ 120%', 'breakeven'],
-    ['Rekon bank', 'Hari padan ÷ hari ada penyata', '100% setiap hari bekerja', 'rekon'],
-    ['AP dibayar tepat masa', 'Invois dalam terma ÷ semua', '≥ 95%', 'ap'],
-    ['Tutup buku', 'Hari bekerja selepas hujung bulan', '3 – 5 hari', 'tutup'],
-    ['Ketepatan POS delivery', 'POS ÷ portal', '99% – 101%', 'ketepatan'],
-    ['Void + diskaun manual', '÷ jualan', '< 0.5%', 'void']
+    ['Food cost %', 'Food cost ÷ sales', '28% – 35%', 'food'],
+    ['SCOR (labour cost %)', 'Labour cost ÷ sales', '25% – 35%', 'scor'],
+    ['Prime cost', '(Food + labour) ÷ sales', '≤ 60% – 65%', 'prime'],
+    ['Rent', 'Rent ÷ sales', '≤ 6% – 10%', ''],
+    ['Net margin', 'Net profit ÷ sales', '5% – 15%', 'margin'],
+    ['Cash runway', 'Cash balance ÷ weekly opex', '≥ 8 weeks', 'runway'],
+    ['Breakeven', 'Sales ÷ breakeven', '≥ 120%', 'breakeven'],
+    ['Bank reconciliation', 'Matched days ÷ days with a statement', '100% every working day', 'rekon'],
+    ['On-time payment rate', 'Invoices paid within terms ÷ all', '≥ 95%', 'ap'],
+    ['Month-end close', 'Working days after month end', '3 – 5 days', 'tutup'],
+    ['Delivery POS accuracy', 'POS ÷ portal', '99% – 101%', 'ketepatan'],
+    ['Voids + manual discounts', '÷ sales', '< 0.5%', 'void']
   ];
   function renderGuide() {
     if (!S.home) { needHome().then(renderGuide).catch(function () { S.home = { kpi: [] }; renderGuide(); }); return; }
     var KM = { food: /Food cost/, scor: /SCOR/, margin: /Margin bersih/, runway: /Runway/, breakeven: /breakeven/i, rekon: /rekon tertutup/, ap: /AP dibayar/, tutup: /tutup buku/, ketepatan: /Ketepatan/ };
-    var now = function (k) { var re = KM[k]; if (!re) return '<span class="muted">—</span>'; var x = (S.home.kpi || []).filter(function (y) { return re.test(y.k); })[0]; return x && x.v ? dot(x.lamp) + ' <b>' + esc(x.v) + '</b>' + (k === 'tutup' ? ' hari' : k === 'runway' ? ' minggu' : '') : '<span class="muted">⚪ belum ada data</span>'; };
+    var now = function (k) { var re = KM[k]; if (!re) return '<span class="muted">—</span>'; var x = (S.home.kpi || []).filter(function (y) { return re.test(y.k); })[0]; return x && x.v ? dot(x.lamp) + ' <b>' + esc(x.v) + '</b>' + (k === 'tutup' ? ' days' : k === 'runway' ? ' weeks' : '') : '<span class="muted">⚪ No data yet</span>'; };
     var q = (S.gq || '').toLowerCase(), list = GL.filter(function (g) { return !q || (g.n + ' ' + g.a).toLowerCase().indexOf(q) >= 0; });
-    var steps = [['1', 'Mulakan di Utama', 'Lihat Skor Kesihatan, 5 tiang dan Ringkasan 30 saat. ⚪ bermaksud data belum lengkap, bukan prestasi buruk.'],
-      ['2', 'Buat Rutin hari ini', 'Halaman Rutin Kewangan memberi senarai tugas harian, mingguan dan bulanan dengan langkah demi langkah.'],
-      ['3', 'Selesaikan Tindakan 🔴', 'Setiap amaran ada PIC, SLA dan butang "Cara selesaikan". Tanda Selesai dengan bukti.'],
-      ['4', 'Faham setiap nombor', 'Tekan butang ? di sebelah mana-mana istilah untuk maksud, cara kira dan julat sihat.'],
-      ['5', 'Lapor dengan yakin', 'Tekan Cetak di bahagian atas untuk PDF laporan WAR atau lembaga.']];
-    view('<section class="glass pad"><div class="kicker">Cara guna FIRAX dalam 5 langkah</div><div class="steps5">' + steps.map(function (s) { return '<div><span>' + s[0] + '</span><b>' + esc(s[1]) + '</b><p>' + esc(s[2]) + '</p></div>'; }).join('') + '</div></section>' +
-      '<section class="glass pad"><div class="sec-h"><h3>Penanda aras industri restoran</h3><span class="note">Panduan umum amalan F&B antarabangsa; sasaran rasmi Sofwah ditetapkan CEO di Tetapan</span></div>' +
-      '<div class="tw"><table class="t"><thead><tr><th>Ukuran</th><th>Cara kira</th><th>Julat sihat (industri)</th><th>Sofwah kini</th><th></th></tr></thead><tbody>' + BENCH.map(function (b) { return '<tr><td><b>' + esc(b[0]) + '</b></td><td>' + esc(b[1]) + '</td><td><span class="chip g">' + esc(b[2]) + '</span></td><td>' + now(b[3]) + '</td><td>' + (b[3] ? helpBtn('', b[3]) : '') + '</td></tr>'; }).join('') + '</tbody></table></div></section>' +
-      '<section class="glass pad"><div class="sec-h"><h3>Kamus kewangan FIRAX · ' + GL.length + ' istilah</h3><input class="inp" id="gq" placeholder="Cari istilah, cth. runway" value="' + esc(S.gq || '') + '" style="max-width:280px"></div>' +
-      '<div class="gloss">' + (list.length ? list.map(function (g) { return '<article class="gcard">' + glossHtml(g) + '</article>'; }).join('') : '<div class="empty">Tiada istilah sepadan</div>') + '</div></section>');
+    var steps = [['1', 'Start at Overview', 'Check the Financial Health Score, the 5 pillars and the 30-second summary. ⚪ means data is incomplete, not poor performance.'],
+      ['2', 'Do today\'s routine', 'The Finance Routine page lists daily, weekly and monthly tasks with step-by-step instructions.'],
+      ['3', 'Clear 🔴 actions', 'Every alert has an owner, an SLA and a "How to resolve" button. Mark it Done with evidence.'],
+      ['4', 'Understand every number', 'Tap the ? button next to any term for its meaning, formula and healthy range.'],
+      ['5', 'Report with confidence', 'Tap Print at the top for a PDF of the WAR or board report.']];
+    view('<section class="glass pad"><div class="kicker">How to use FIRAX in 5 steps</div><div class="steps5">' + steps.map(function (s) { return '<div><span>' + s[0] + '</span><b>' + esc(s[1]) + '</b><p>' + esc(s[2]) + '</p></div>'; }).join('') + '</div></section>' +
+      '<section class="glass pad"><div class="sec-h"><h3>Restaurant industry benchmarks</h3><span class="note">General guide to international F&B practice; Sofwah\'s official targets are set by the CEO in Settings</span></div>' +
+      '<div class="tw"><table class="t"><thead><tr><th>Measure</th><th>Formula</th><th>Healthy range (industry)</th><th>Sofwah now</th><th></th></tr></thead><tbody>' + BENCH.map(function (b) { return '<tr><td><b>' + esc(b[0]) + '</b></td><td>' + esc(b[1]) + '</td><td><span class="chip g">' + esc(b[2]) + '</span></td><td>' + now(b[3]) + '</td><td>' + (b[3] ? helpBtn('', b[3]) : '') + '</td></tr>'; }).join('') + '</tbody></table></div></section>' +
+      '<section class="glass pad"><div class="sec-h"><h3>FIRAX finance glossary · ' + GL.length + ' terms</h3><input class="inp" id="gq" placeholder="Search terms, e.g. runway" value="' + esc(S.gq || '') + '" style="max-width:280px"></div>' +
+      '<div class="gloss">' + (list.length ? list.map(function (g) { return '<article class="gcard">' + glossHtml(g) + '</article>'; }).join('') : '<div class="empty">No matching terms</div>') + '</div></section>');
     var inp = $('#gq'); if (inp) { inp.oninput = function () { S.gq = this.value; var pos = this.selectionStart; renderGuide(); var n = $('#gq'); n.focus(); n.setSelectionRange(pos, pos); }; }
   }
 
@@ -811,133 +814,133 @@
   function link(u, t) { return /^https?:\/\//.test(u || '') ? '<a href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(t) + '</a>' : '<span class="muted">' + esc(u ? 'WhatsApp' : '—') + '</span>'; }
   function payView(r) {
     var tabs = '<section class="paytabs">' + r.runs.map(function (d) {
-      return '<button class="glass ptab' + (d.ymd === r.ymd ? ' on' : '') + '" data-act="payD" data-d="' + d.ymd + '"><small>' + (d.today ? 'HARI INI · ' : d.past ? 'LEPAS · ' : '') + esc(d.dmy) + '</small><b>' + esc(d.day) + '</b><span>' + (d.hr ? 'HR: staf, sambilan, hari jadi' : 'Supplier / vendor') + '</span></button>';
+      return '<button class="glass ptab' + (d.ymd === r.ymd ? ' on' : '') + '" data-act="payD" data-d="' + d.ymd + '"><small>' + (d.today ? 'TODAY · ' : d.past ? 'PAST · ' : '') + esc(d.dmy) + '</small><b>' + esc(d.day) + '</b><span>' + (d.hr ? 'HR: staff, part-time, birthdays' : 'Supplier / vendor') + '</span></button>';
     }).join('') + '</section>';
     var s = r.sum, left = s.n - s.nPaid;
     var tiles = '<section class="sumtiles">' +
-      '<div class="glass sumtile"><div><b>' + rmf(s.due - s.paid) + '</b><small>Perlu dibayar run ini</small></div></div>' +
-      '<div class="glass sumtile"><div><b>' + left + '</b><small>Penerima belum dibayar</small></div></div>' +
-      '<div class="glass sumtile"><div><b>' + rmf(s.paid) + '</b><small>Sudah dibayar · ' + s.nPaid + ' penerima</small></div></div>' +
-      '<div class="glass sumtile"><div><b style="color:var(--y)">' + r.wait.n + '</b><small>Belum diluluskan · ' + rmf(r.wait.amt) + ' (tidak dibayar)</small></div></div></section>';
-    var steps = [['1', 'Buka folder bayaran', 'Semua invois run ini dalam satu folder Drive.'], ['2', 'Bayar di M2U Biz', 'Ikut jumlah dalam setiap kad. Satu supplier = satu transaksi.'], ['3', 'Tanda dibayar', 'Muat naik slip dan isi rujukan M2U.'], ['4', 'Sistem buat selebihnya', 'Slip dinamakan, difailkan ke folder supplier' + (r.autoMail ? ' dan emel balasan dihantar ke supplier' : '') + '.']];
-    var how = '<section class="glass pad"><div class="sec-h"><div><div class="kicker">' + esc(r.day) + ' · ' + esc(ymdS(r.ymd)) + (r.hr ? ' · Khusus HR' : ' · Supplier') + '</div><h3 style="margin-top:6px">Hanya item dalam senarai ini dibayar</h3></div>' +
-      (r.canEdit ? '<div class="row-btn" style="margin:0"><button class="btn" data-act="payXls">⬇ Excel</button><button class="btn" data-act="payFile">' + ic(I.refresh) + 'Fail & namakan invois</button><button class="btn pri" data-act="payFolder">' + ic(I.books) + 'Buka folder bayaran</button></div>' : '') + '</div>' +
+      '<div class="glass sumtile"><div><b>' + rmf(s.due - s.paid) + '</b><small>To pay this run</small></div></div>' +
+      '<div class="glass sumtile"><div><b>' + left + '</b><small>Payees not yet paid</small></div></div>' +
+      '<div class="glass sumtile"><div><b>' + rmf(s.paid) + '</b><small>Paid · ' + s.nPaid + ' payees</small></div></div>' +
+      '<div class="glass sumtile"><div><b style="color:var(--y)">' + r.wait.n + '</b><small>Not yet approved · ' + rmf(r.wait.amt) + ' (not paid)</small></div></div></section>';
+    var steps = [['1', 'Open payment folder', 'All invoices for this run are in one Drive folder.'], ['2', 'Pay in M2U Biz', 'Use the amount on each card. One supplier = one transaction.'], ['3', 'Mark as paid', 'Upload the slip and enter the M2U reference.'], ['4', 'The system does the rest', 'The slip is renamed and filed in the supplier folder' + (r.autoMail ? ', and a supplier email reply is sent' : '') + '.']];
+    var how = '<section class="glass pad"><div class="sec-h"><div><div class="kicker">' + esc(r.day) + ' · ' + esc(ymdS(r.ymd)) + (r.hr ? ' · HR only' : ' · Suppliers') + '</div><h3 style="margin-top:6px">Only items on this list are paid</h3></div>' +
+      (r.canEdit ? '<div class="row-btn" style="margin:0"><button class="btn" data-act="payXls">⬇ Excel</button><button class="btn" data-act="payFile">' + ic(I.refresh) + 'File & rename invoices</button><button class="btn pri" data-act="payFolder">' + ic(I.books) + 'Open payment folder</button></div>' : '') + '</div>' +
       '<div class="steps4">' + steps.map(function (x) { return '<div><span>' + x[0] + '</span><b>' + esc(x[1]) + '</b><p>' + esc(x[2]) + '</p></div>'; }).join('') + '</div></section>';
     var body = '';
-    if (!r.groups.length && !(r.hr && (r.sambilan.length || r.bday.length))) body = '<section class="glass pad"><div class="empty">✅ Tiada bayaran dijadualkan untuk ' + esc(r.day) + ' ini.' + (r.wait.n ? '<br>' + r.wait.n + ' invois masih menunggu kelulusan — lihat di bawah.' : '') + '</div></section>';
+    if (!r.groups.length && !(r.hr && (r.sambilan.length || r.bday.length))) body = '<section class="glass pad"><div class="empty">✅ No payments scheduled for this ' + esc(r.day) + '.' + (r.wait.n ? '<br>' + r.wait.n + ' invoices are still pending approval — see below.' : '') + '</div></section>';
     body += r.groups.map(function (g, i) { return supCard(r, g, i); }).join('');
     if (r.hr) body += sambilanCard(r) + bdayCard(r);
     view(tabs + tiles + how + body + waitCard(r) +
-      '<div class="note" style="text-align:center">FIRAX tidak membuat bayaran dan tidak menyimpan nombor akaun bank. Bayaran dibuat oleh staf di M2U Biz; sistem hanya menyediakan senarai, memfailkan slip dan menghantar emel balasan.</div>');
+      '<div class="note" style="text-align:center">FIRAX does not make payments and does not store bank account numbers. Staff make payments in M2U Biz; the system only prepares the list, files slips and sends email replies.</div>');
   }
   function ymdS(y) { var p = String(y).split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
   function supCard(r, g, i) {
     var done = g.paid >= g.total - 0.004, part = g.paid > 0 && !done, open = g.items.filter(function (x) { return x.st !== 'Dibayar'; });
     var mailSt = g.items.map(function (x) { return x.mail; }).filter(String)[0] || '';
     var head = '<div class="sec-h"><div><h3>' + (done ? '✅ ' : '') + esc(g.label) + '</h3><div class="meta">' +
-      chip(g.staff ? 'Tuntutan staf' : (g.hari || 'Hari bayar belum ditetapkan'), g.hari ? '' : 'y') +
-      (g.email ? '<span class="chip">✉ ' + esc(g.email) + '</span>' : '<span class="chip w">Tiada emel · WhatsApp</span>') +
-      (g.items.some(function (x) { return x.late && x.st !== 'Dibayar'; }) ? '<span class="chip r">Tertunggak dari run lepas</span>' : '') +
-      (mailSt ? '<span class="chip ' + (/Dihantar/.test(mailSt) ? 'g' : /Menunggu/.test(mailSt) ? 'y' : 'w') + '">' + esc(mailSt) + '</span>' : '') +
-      (g.folder ? '<a class="chip" href="' + esc(g.folder) + '" target="_blank" rel="noopener">📁 Folder supplier</a>' : '') + '</div></div>' +
-      '<div class="paytot"><small>' + (done ? 'Dibayar' : part ? 'Baki' : 'Jumlah bayar') + '</small><b>' + rmf(done ? g.total : g.total - g.paid) + '</b></div></div>';
+      chip(g.staff ? 'Staff claims' : (en(g.hari) || 'Payment day not set'), g.hari ? '' : 'y') +
+      (g.email ? '<span class="chip">✉ ' + esc(g.email) + '</span>' : '<span class="chip w">No email · WhatsApp</span>') +
+      (g.items.some(function (x) { return x.late && x.st !== 'Dibayar'; }) ? '<span class="chip r">Overdue from previous run</span>' : '') +
+      (mailSt ? '<span class="chip ' + (/Dihantar/.test(mailSt) ? 'g' : /Menunggu/.test(mailSt) ? 'y' : 'w') + '">' + esc(en(mailSt)) + '</span>' : '') +
+      (g.folder ? '<a class="chip" href="' + esc(g.folder) + '" target="_blank" rel="noopener">📁 Supplier folder</a>' : '') + '</div></div>' +
+      '<div class="paytot"><small>' + (done ? 'Paid' : part ? 'Balance' : 'Amount to pay') + '</small><b>' + rmf(done ? g.total : g.total - g.paid) + '</b></div></div>';
     var rows = g.items.map(function (x) {
-      return '<tr class="' + (x.st === 'Dibayar' ? 'paid' : '') + '"><td>' + esc(CAWN[x.caw] || x.caw) + '</td><td><b>' + show(x.inv) + '</b><div class="muted" style="font-size:11px">' + esc(x.id) + '</div></td><td>' + show(x.tinv) + '</td><td>' + show(x.due) + '</td><td class="n">' + rmf(x.amt) + '</td><td>' + link(x.file, x.std ? 'Invois ✓' : 'Invois') + '</td><td>' +
-        (x.st === 'Dibayar' ? chip('✅ Dibayar ' + (x.paidOn || ''), 'g') + (x.slip ? ' ' + link(x.slip, 'Slip') : '') : r.canEdit ? '<label class="ck"><input type="checkbox" class="pk" data-g="' + i + '" value="' + x.row + '" checked> bayar</label>' : chip('Belum', 'y')) + '</td></tr>';
+      return '<tr class="' + (x.st === 'Dibayar' ? 'paid' : '') + '"><td>' + esc(CAWN[x.caw] || x.caw) + '</td><td><b>' + show(x.inv) + '</b><div class="muted" style="font-size:11px">' + esc(x.id) + '</div></td><td>' + show(x.tinv) + '</td><td>' + show(x.due) + '</td><td class="n">' + rmf(x.amt) + '</td><td>' + link(x.file, x.std ? 'Invoice ✓' : 'Invoice') + '</td><td>' +
+        (x.st === 'Dibayar' ? chip('✅ Paid ' + (x.paidOn || ''), 'g') + (x.slip ? ' ' + link(x.slip, 'Slip') : '') : r.canEdit ? '<label class="ck"><input type="checkbox" class="pk" data-g="' + i + '" value="' + x.row + '" checked> pay</label>' : chip('Not yet', 'y')) + '</td></tr>';
     }).join('');
-    return '<section class="glass pad paycard' + (done ? ' done' : '') + '">' + head + '<div class="tw"><table class="t"><thead><tr><th>Cawangan</th><th>No. invois</th><th>Tarikh invois</th><th>Jatuh tempo</th><th class="n">Amaun</th><th>Fail</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
-      (open.length && r.canEdit ? '<div class="row-btn"><button class="btn pri" data-act="payMark" data-k="sup" data-g="' + i + '">Tanda dibayar + muat naik slip</button></div>' : '') + '</section>';
+    return '<section class="glass pad paycard' + (done ? ' done' : '') + '">' + head + '<div class="tw"><table class="t"><thead><tr><th>Branch</th><th>Invoice no.</th><th>Invoice date</th><th>Due date</th><th class="n">Amount</th><th>File</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      (open.length && r.canEdit ? '<div class="row-btn"><button class="btn pri" data-act="payMark" data-k="sup" data-g="' + i + '">Mark as paid + upload slip</button></div>' : '') + '</section>';
   }
   function sambilanCard(r) {
-    if (!r.sambilan.length) return '<section class="glass pad"><div class="sec-h"><h3>Staf sambilan / casual</h3></div><div class="empty">Tiada bayaran sambilan tertunggak.</div></section>';
+    if (!r.sambilan.length) return '<section class="glass pad"><div class="sec-h"><h3>Part-time & casual wages</h3></div><div class="empty">No outstanding part-time payments.</div></section>';
     var rows = r.sambilan.map(function (p, i) {
       var ok = !p.hold && p.final;
       return '<tr><td>' + esc(CAWN[p.caw] || p.caw) + '</td><td><b>' + esc(p.name) + '</b><div class="muted" style="font-size:11px">' + esc(p.jenis) + ' · ' + p.rows.map(function (x) { return esc(x.mon) + ' (' + esc(x.qty) + ')'; }).join(', ') + '</div></td><td class="n">' + rmf(p.amt) + '</td><td>' +
-        (p.hold ? chip('🔴 Ditahan HR — jangan bayar') : !p.final ? chip('⏳ Belum muktamad (4hb)') : r.canEdit ? '<button class="btn sm" data-act="payMark" data-k="sambilan" data-g="' + i + '">Tanda dibayar</button>' : chip('Belum', 'y')) + '</td></tr>';
+        (p.hold ? chip('🔴 On hold (HR) — do not pay') : !p.final ? chip('⏳ Not final yet (4th)') : r.canEdit ? '<button class="btn sm" data-act="payMark" data-k="sambilan" data-g="' + i + '">Mark as paid</button>' : chip('Not yet', 'y')) + '</td></tr>';
     }).join('');
     var tot = r.sambilan.filter(function (p) { return !p.hold && p.final; }).reduce(function (a, p) { return a + p.amt; }, 0);
-    return '<section class="glass pad"><div class="sec-h"><div><h3>Staf sambilan / casual</h3><div class="note">Dari WAR HR › Bayaran Sambilan. Bank & no. akaun rujuk sheet HR (tidak dipaparkan di FIRAX).</div></div><div class="paytot"><small>Boleh dibayar</small><b>' + rmf(tot) + '</b></div></div>' +
-      '<div class="tw"><table class="t"><thead><tr><th>Cawangan</th><th>Nama</th><th class="n">Jumlah</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div></section>';
+    return '<section class="glass pad"><div class="sec-h"><div><h3>Part-time & casual wages</h3><div class="note">From WAR HR › Bayaran Sambilan. For bank & account no., see the HR sheet (not shown in FIRAX).</div></div><div class="paytot"><small>Payable</small><b>' + rmf(tot) + '</b></div></div>' +
+      '<div class="tw"><table class="t"><thead><tr><th>Branch</th><th>Name</th><th class="n">Amount</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div></section>';
   }
   function bdayCard(r) {
     var rows = r.bday.map(function (b, i) {
-      return '<tr><td>' + esc(CAWN[b.caw] || b.caw) + '</td><td><b>' + esc(b.name) + '</b><div class="muted" style="font-size:11px">' + esc(b.id) + '</div></td><td>🎂 ' + esc(b.bd) + '</td><td>' + (b.late ? chip('🔴 Lewat · Selasa ' + ymdS(b.pay)) : chip('🟡 Selasa ini')) + '</td><td class="n">RM100.00</td><td>' + (r.canEdit ? '<label class="ck"><input type="checkbox" class="pkb" value="' + b.row + '" checked> bayar</label>' : '') + '</td></tr>';
+      return '<tr><td>' + esc(CAWN[b.caw] || b.caw) + '</td><td><b>' + esc(b.name) + '</b><div class="muted" style="font-size:11px">' + esc(b.id) + '</div></td><td>🎂 ' + esc(b.bd) + '</td><td>' + (b.late ? chip('🔴 Late · Tuesday ' + ymdS(b.pay)) : chip('🟡 This Tuesday')) + '</td><td class="n">RM100.00</td><td>' + (r.canEdit ? '<label class="ck"><input type="checkbox" class="pkb" value="' + b.row + '" checked> pay</label>' : '') + '</td></tr>';
     }).join('');
-    return '<section class="glass pad"><div class="sec-h"><div><h3>🎁 Hadiah hari jadi staf · RM100</h3><div class="note">Dibayar Selasa pertama selepas hari jadi. Senarai dari AP › Hari Jadi Staf (QuickHR; IC tidak disimpan).</div></div><div class="paytot"><small>' + r.bday.length + ' staf</small><b>' + rmf(r.bday.length * 100) + '</b></div></div>' +
-      (r.bday.length ? '<div class="tw"><table class="t"><thead><tr><th>Cawangan</th><th>Nama</th><th>Hari jadi</th><th>Jadual</th><th class="n">Hadiah</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' + (r.canEdit ? '<div class="row-btn"><button class="btn pri" data-act="payMark" data-k="hadiah">Tanda hadiah dibayar</button></div>' : '') : '<div class="empty">Tiada hari jadi untuk dibayar minggu ini.</div>') + '</section>';
+    return '<section class="glass pad"><div class="sec-h"><div><h3>🎁 Staff birthday gift · RM100</h3><div class="note">Paid on the first Tuesday after the birthday. List from AP › Hari Jadi Staf (QuickHR; IC not stored).</div></div><div class="paytot"><small>' + r.bday.length + ' staff</small><b>' + rmf(r.bday.length * 100) + '</b></div></div>' +
+      (r.bday.length ? '<div class="tw"><table class="t"><thead><tr><th>Branch</th><th>Name</th><th>Birthday</th><th>Schedule</th><th class="n">Gift</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' + (r.canEdit ? '<div class="row-btn"><button class="btn pri" data-act="payMark" data-k="hadiah">Mark gifts as paid</button></div>' : '') : '<div class="empty">No birthday gifts to pay this week.</div>') + '</section>';
   }
   function waitCard(r) {
     if (!r.wait.n) return '';
     var rows = r.wait.list.map(function (x) {
-      return '<tr><td>' + (r.canApprove ? '<input type="checkbox" class="pka" value="' + x.row + '">' : '') + '</td><td><b>' + esc(x.sup) + '</b><div class="muted" style="font-size:11px">' + esc(x.id) + (x.note ? ' · ' + esc(String(x.note).slice(0, 90)) : '') + '</div></td><td>' + esc(CAWN[x.caw] || x.caw) + '</td><td>' + show(x.inv) + '</td><td>' + show(x.due) + '</td><td class="n">' + rmf(x.amt) + '</td><td>' + chip(x.st, x.st === 'Disemak' ? 'y' : 'w') + '</td><td>' + link(x.file, 'Invois') + '</td></tr>';
+      return '<tr><td>' + (r.canApprove ? '<input type="checkbox" class="pka" value="' + x.row + '">' : '') + '</td><td><b>' + esc(x.sup) + '</b><div class="muted" style="font-size:11px">' + esc(x.id) + (x.note ? ' · ' + esc(String(x.note).slice(0, 90)) : '') + '</div></td><td>' + esc(CAWN[x.caw] || x.caw) + '</td><td>' + show(x.inv) + '</td><td>' + show(x.due) + '</td><td class="n">' + rmf(x.amt) + '</td><td>' + chip(en(x.st), x.st === 'Disemak' ? 'y' : 'w') + '</td><td>' + link(x.file, 'Invoice') + '</td></tr>';
     }).join('');
-    return '<section class="glass pad"><details' + (r.canApprove ? ' open' : '') + '><summary class="sec-h" style="cursor:pointer"><h3>⏳ Menunggu kelulusan · ' + r.wait.n + ' invois · ' + rmf(r.wait.amt) + '</h3><span class="note">Tidak masuk senarai bayaran sehingga Diluluskan</span></summary>' +
-      '<div class="tw"><table class="t"><thead><tr><th></th><th>Supplier</th><th>Cawangan</th><th>No. invois</th><th>Jatuh tempo</th><th class="n">Amaun</th><th>Status</th><th>Fail</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
-      '<div class="row-btn">' + '<a class="btn" href="' + esc(r.apUrl) + '" target="_blank" rel="noopener">Buka fail AP</a>' + (r.canApprove ? '<button class="btn pri" data-act="payApprove">Luluskan yang dipilih</button>' : '') + '</div></details></section>';
+    return '<section class="glass pad"><details' + (r.canApprove ? ' open' : '') + '><summary class="sec-h" style="cursor:pointer"><h3>⏳ Pending approval · ' + r.wait.n + ' invoices · ' + rmf(r.wait.amt) + '</h3><span class="note">Not added to the payment list until Approved</span></summary>' +
+      '<div class="tw"><table class="t"><thead><tr><th></th><th>Supplier</th><th>Branch</th><th>Invoice no.</th><th>Due date</th><th class="n">Amount</th><th>Status</th><th>File</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      '<div class="row-btn">' + '<a class="btn" href="' + esc(r.apUrl) + '" target="_blank" rel="noopener">Open AP file</a>' + (r.canApprove ? '<button class="btn pri" data-act="payApprove">Approve selected</button>' : '') + '</div></details></section>';
   }
   A.payD = function (el) { S.payD = el.getAttribute('data-d'); view('<div class="skel" style="height:300px"></div>'); renderPay(S.payD); };
   A.payFolder = function (el) {
-    el.disabled = true; toast('Menyediakan folder bayaran…');
-    rpc('fxPayFolder', [S.token, S.pay.ymd]).then(function (x) { el.disabled = false; window.open(x.url, '_blank'); toast('Folder ' + x.name + (x.added ? ' · ' + x.added + ' invois ditambah' : '')); }).catch(function (e) { el.disabled = false; toast(e.error, true); });
+    el.disabled = true; toast('Preparing payment folder…');
+    rpc('fxPayFolder', [S.token, S.pay.ymd]).then(function (x) { el.disabled = false; window.open(x.url, '_blank'); toast('Folder ' + x.name + (x.added ? ' · ' + x.added + ' invoices added' : '')); }).catch(function (e) { el.disabled = false; toast(e.error, true); });
   };
   A.payFile = function (el) {
-    el.disabled = true; toast('Menamakan & memfailkan invois…');
-    rpc('fxPayFileNow', [S.token]).then(function (x) { toast(x.filed + ' invois difailkan' + (x.errors ? ' · ' + x.errors + ' gagal' : '')); renderPay(S.pay.ymd); }).catch(function (e) { el.disabled = false; toast(e.error, true); });
+    el.disabled = true; toast('Renaming & filing invoices…');
+    rpc('fxPayFileNow', [S.token]).then(function (x) { toast(x.filed + ' invoices filed' + (x.errors ? ' · ' + x.errors + ' failed' : '')); renderPay(S.pay.ymd); }).catch(function (e) { el.disabled = false; toast(e.error, true); });
   };
   A.payApprove = function (el) {
     var rows = Array.prototype.map.call(document.querySelectorAll('.pka:checked'), function (c) { return +c.value; });
-    if (!rows.length) { toast('Pilih invois untuk diluluskan', true); return; }
+    if (!rows.length) { toast('Select invoices to approve', true); return; }
     el.disabled = true;
-    rpc('fxPayApprove', [S.token, rows]).then(function (x) { toast(x.approved + ' invois diluluskan · masuk jadual bayaran'); renderPay(S.pay.ymd); }).catch(function (e) { el.disabled = false; toast(e.error, true); });
+    rpc('fxPayApprove', [S.token, rows]).then(function (x) { toast(x.approved + ' invoices approved · added to payment schedule'); renderPay(S.pay.ymd); }).catch(function (e) { el.disabled = false; toast(e.error, true); });
   };
   A.payMark = function (el) {
     var k = el.getAttribute('data-k'), gi = +el.getAttribute('data-g'), r = S.pay, rows, title, total, needSlip = k === 'sup', key = '';
     if (k === 'sup') { var g = r.groups[gi]; key = g.key; rows = Array.prototype.map.call(document.querySelectorAll('.pk[data-g="' + gi + '"]:checked'), function (c) { return +c.value; }); total = g.items.filter(function (x) { return rows.indexOf(x.row) >= 0; }).reduce(function (a, x) { return a + x.amt; }, 0); title = g.label; }
-    else if (k === 'sambilan') { var p = r.sambilan[gi]; key = p.name; rows = p.rows.map(function (x) { return x.row; }); total = p.amt; title = 'Sambilan · ' + p.name; }
-    else { rows = Array.prototype.map.call(document.querySelectorAll('.pkb:checked'), function (c) { return +c.value; }); total = rows.length * 100; title = 'Hadiah hari jadi · ' + rows.length + ' staf'; }
-    if (!rows.length) { toast('Pilih sekurang-kurangnya satu baris', true); return; }
+    else if (k === 'sambilan') { var p = r.sambilan[gi]; key = p.name; rows = p.rows.map(function (x) { return x.row; }); total = p.amt; title = 'Part-time · ' + p.name; }
+    else { rows = Array.prototype.map.call(document.querySelectorAll('.pkb:checked'), function (c) { return +c.value; }); total = rows.length * 100; title = 'Birthday gift · ' + rows.length + ' staff'; }
+    if (!rows.length) { toast('Select at least one row', true); return; }
     S.payM = { kind: k, key: key, rows: rows };
-    modal('<h3>Tanda dibayar</h3><p class="note" style="margin:6px 0 14px">' + esc(title) + ' · ' + rows.length + ' baris · <b style="color:#2fe07a">' + rmf(total) + '</b><br>Pastikan jumlah di M2U sama dengan jumlah ini.</p>' +
-      field('Slip bayaran M2U (PDF / gambar)' + (needSlip ? '' : ' · pilihan'), '<input type="file" id="pslip" accept="application/pdf,image/*">') +
-      field('Rujukan transaksi M2U', '<input id="pref" placeholder="cth. M2U 1234567890">') +
-      field('Tarikh bayar', '<input type="date" id="pdate" value="' + esc(r.today) + '" max="' + esc(r.today) + '">') +
-      (k === 'sup' && r.autoMail ? '<p class="note">Selepas disimpan, emel balasan berserta slip dihantar ke supplier dalam ±30 minit (invois yang diterima melalui emel sahaja).</p>' : '') +
-      '<div class="row-btn"><button class="btn" data-act="closeModal">Batal</button><button class="btn pri" id="psave" data-act="paySave">Simpan</button></div>');
+    modal('<h3>Mark as paid</h3><p class="note" style="margin:6px 0 14px">' + esc(title) + ' · ' + rows.length + ' rows · <b style="color:#2fe07a">' + rmf(total) + '</b><br>Make sure the M2U amount matches this total.</p>' +
+      field('M2U payment slip (PDF / image)' + (needSlip ? '' : ' · optional'), '<input type="file" id="pslip" accept="application/pdf,image/*">') +
+      field('M2U transaction reference', '<input id="pref" placeholder="e.g. M2U 1234567890">') +
+      field('Payment date', '<input type="date" id="pdate" value="' + esc(r.today) + '" max="' + esc(r.today) + '">') +
+      (k === 'sup' && r.autoMail ? '<p class="note">Once saved, an email reply with the slip is sent to the supplier within ±30 minutes (only for invoices received by email).</p>' : '') +
+      '<div class="row-btn"><button class="btn" data-act="closeModal">Cancel</button><button class="btn pri" id="psave" data-act="paySave">Save</button></div>');
   };
   A.paySave = function (el) {
     var m = S.payM, f = $('#pslip').files[0], ref = val('pref'), d = val('pdate');
-    if (!ref) { toast('Isi rujukan M2U', true); return; }
-    if (m.kind === 'sup' && !f) { toast('Muat naik slip bayaran', true); return; }
-    if (f && f.size > 10 * 1048576) { toast('Fail terlalu besar (had 10MB)', true); return; }
-    el.disabled = true; el.textContent = 'Menyimpan…';
+    if (!ref) { toast('Enter the M2U reference', true); return; }
+    if (m.kind === 'sup' && !f) { toast('Upload the payment slip', true); return; }
+    if (f && f.size > 10 * 1048576) { toast('File too large (10MB limit)', true); return; }
+    el.disabled = true; el.textContent = 'Saving…';
     var send = function (b64) {
       rpc('fxPaySlip', [S.token, { ymd: S.pay.ymd, kind: m.kind, key: m.key, rows: m.rows, ref: ref, paid: d, b64: b64 || '', mime: f ? f.type : '', name: f ? f.name : '' }])
-        .then(function (x) { closeModal(); toast('✅ ' + x.n + ' baris ditanda Dibayar' + (x.name ? ' · slip: ' + x.name : '')); renderPay(S.pay.ymd); })
-        .catch(function (e) { el.disabled = false; el.textContent = 'Simpan'; toast(e.error, true); });
+        .then(function (x) { closeModal(); toast('✅ ' + x.n + ' rows marked Paid' + (x.name ? ' · slip: ' + x.name : '')); renderPay(S.pay.ymd); })
+        .catch(function (e) { el.disabled = false; el.textContent = 'Save'; toast(e.error, true); });
     };
     if (!f) return send('');
-    var rd = new FileReader(); rd.onload = function () { send(String(rd.result).split(',')[1]); }; rd.onerror = function () { el.disabled = false; toast('Gagal membaca fail', true); }; rd.readAsDataURL(f);
+    var rd = new FileReader(); rd.onload = function () { send(String(rd.result).split(',')[1]); }; rd.onerror = function () { el.disabled = false; toast('Could not read the file', true); }; rd.readAsDataURL(f);
   };
 
   /* ======================= Muat turun Excel (SheetJS, dimuat bila perlu) ======================= */
   function needXlsx() {
     if (window.XLSX) return Promise.resolve(window.XLSX);
-    return new Promise(function (ok, bad) { var s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload = function () { ok(window.XLSX); }; s.onerror = function () { bad({ error: 'Gagal memuat modul Excel. Semak internet dan cuba lagi.' }); }; document.head.appendChild(s); });
+    return new Promise(function (ok, bad) { var s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload = function () { ok(window.XLSX); }; s.onerror = function () { bad({ error: 'Could not load the Excel module. Check your internet connection and try again.' }); }; document.head.appendChild(s); });
   }
   /** sheets = [{ n: 'Nama tab', rows: [[...], ...], w: [lebar lajur] }] */
   function dlXlsx(file, sheets) {
-    toast('Menyediakan fail Excel…');
+    toast('Preparing Excel file…');
     return needXlsx().then(function (X) {
       var wb = X.utils.book_new();
       sheets.forEach(function (s) { var ws = X.utils.aoa_to_sheet(s.rows); if (s.w) ws['!cols'] = s.w.map(function (w) { return { wch: w }; }); X.utils.book_append_sheet(wb, ws, s.n.slice(0, 31)); });
       X.writeFile(wb, file.replace(/[\\\/:*?"<>|]+/g, ' ') + '.xlsx');
-      toast('Fail dimuat turun: ' + file + '.xlsx');
-    }).catch(function (e) { toast((e && e.error) || 'Muat turun gagal', true); });
+      toast('File downloaded: ' + file + '.xlsx');
+    }).catch(function (e) { toast((e && e.error) || 'Download failed', true); });
   }
   function r2(n) { return Math.round((n || 0) * 100) / 100; }
 
   /* ======================= Penyata Akaun Supplier (SOA) ======================= */
-  var SOAP = [['m1', 'Bulan ini'], ['m3', '3 bulan'], ['m6', '6 bulan'], ['ytd', 'Tahun ini'], ['y12', '12 bulan']];
+  var SOAP = [['m1', 'This month'], ['m3', '3 months'], ['m6', '6 months'], ['ytd', 'Year to date'], ['y12', '12 months']];
   function soaRange(p, t) {
     var d = new Date(t + 'T00:00:00'), f = function (x) { return x.getFullYear() + '-' + ('0' + (x.getMonth() + 1)).slice(-2) + '-' + ('0' + x.getDate()).slice(-2); };
     if (p === 'm1') return [t.slice(0, 8) + '01', t];
@@ -953,81 +956,81 @@
     var q = S.soaQ, f = (S.soaF || '').toLowerCase();
     var list = r.vendors.filter(function (v) { return !f || (v.key + ' ' + v.short + ' ' + v.kod).toLowerCase().indexOf(f) >= 0; });
     var totOut = r.vendors.reduce(function (a, v) { return a + v.out; }, 0), totLate = r.vendors.reduce(function (a, v) { return a + v.late; }, 0);
-    var side = '<aside class="glass pad soa-list"><div class="kicker">Senarai vendor · ' + r.vendors.length + '</div>' +
-      '<div class="soa-sum"><div><small>Jumlah terhutang</small><b>' + rmf(totOut) + '</b></div><div><small>Lewat tempoh</small><b style="color:#ff8b8b">' + rmf(totLate) + '</b></div></div>' +
-      '<input class="inp" id="soaq" placeholder="Cari vendor…" value="' + esc(S.soaF || '') + '">' +
-      '<select class="inp soa-sel" data-act="none" id="soasel"><option value="">— Pilih vendor —</option>' + r.vendors.map(function (v) { return '<option value="' + esc(v.key) + '"' + (v.key === q.sup ? ' selected' : '') + '>' + esc(v.short) + (v.out ? ' · ' + rmf(v.out) : '') + '</option>'; }).join('') + '</select>' +
+    var side = '<aside class="glass pad soa-list"><div class="kicker">Vendor list · ' + r.vendors.length + '</div>' +
+      '<div class="soa-sum"><div><small>Total outstanding</small><b>' + rmf(totOut) + '</b></div><div><small>Overdue</small><b style="color:#ff8b8b">' + rmf(totLate) + '</b></div></div>' +
+      '<input class="inp" id="soaq" placeholder="Search vendors…" value="' + esc(S.soaF || '') + '">' +
+      '<select class="inp soa-sel" data-act="none" id="soasel"><option value="">— Select vendor —</option>' + r.vendors.map(function (v) { return '<option value="' + esc(v.key) + '"' + (v.key === q.sup ? ' selected' : '') + '>' + esc(v.short) + (v.out ? ' · ' + rmf(v.out) : '') + '</option>'; }).join('') + '</select>' +
       '<div class="soa-vs">' + list.map(function (v) {
-        return '<button class="soa-v' + (v.key === q.sup ? ' on' : '') + '" data-act="soaPick" data-k="' + esc(v.key) + '"><span><b>' + esc(v.short) + '</b><small>' + esc(v.kod || 'Tiada kod') + ' · ' + v.n + ' invois</small></span><em class="' + (v.late ? 'r' : v.out ? 'y' : '') + '">' + (v.out ? rmf(v.out) : '✓') + '</em></button>';
-      }).join('') + (list.length ? '' : '<div class="empty">Tiada padanan</div>') + '</div></aside>';
-    var main = r.soa ? soaBody(r) : '<section class="glass pad"><div class="empty" style="padding:60px 20px"><div style="font-size:42px">📒</div><h3>Pilih vendor di sebelah kiri</h3><p class="note">Penyata akaun lengkap: baki awal, invois, bayaran, baki berjalan, umur hutang, prestasi bayaran, belian ikut cawangan & item, serta petunjuk rundingan 2027.</p></div></section>';
+        return '<button class="soa-v' + (v.key === q.sup ? ' on' : '') + '" data-act="soaPick" data-k="' + esc(v.key) + '"><span><b>' + esc(v.short) + '</b><small>' + esc(v.kod || 'No code') + ' · ' + v.n + ' invoices</small></span><em class="' + (v.late ? 'r' : v.out ? 'y' : '') + '">' + (v.out ? rmf(v.out) : '✓') + '</em></button>';
+      }).join('') + (list.length ? '' : '<div class="empty">No matches</div>') + '</div></aside>';
+    var main = r.soa ? soaBody(r) : '<section class="glass pad"><div class="empty" style="padding:60px 20px"><div style="font-size:42px">📒</div><h3>Select a vendor on the left</h3><p class="note">Full statement of account: opening balance, invoices, payments, running balance, AP aging, payment performance, purchases by branch & item, and 2027 negotiation insights.</p></div></section>';
     view('<div class="soa">' + side + '<div class="stack">' + periodBar(q) + main + '</div></div>');
     var inp = $('#soaq'); if (inp) inp.oninput = function () { S.soaF = this.value; var pos = this.selectionStart; soaView(S.soa); var n = $('#soaq'); n.focus(); n.setSelectionRange(pos, pos); };
     var sel = $('#soasel'); if (sel) sel.onchange = function () { if (this.value) { S.soaQ.sup = this.value; view('<div class="skel" style="height:300px"></div>'); renderSoa(); } };
   }
   function periodBar(q) {
     return '<section class="glass pad soa-per"><div class="chips">' + SOAP.map(function (p) { return '<button class="pill' + (q.p === p[0] ? ' on' : '') + '" data-act="soaP" data-p="' + p[0] + '">' + p[1] + '</button>'; }).join('') + '</div>' +
-      '<div class="soa-dates"><label>Dari <input type="date" class="inp" id="sf" value="' + esc(q.from) + '"></label><label>Hingga <input type="date" class="inp" id="st" value="' + esc(q.to) + '"></label><button class="btn sm" data-act="soaGo">Papar</button></div>' +
-      (S.soa && S.soa.soa ? '<div class="soa-dl"><button class="btn sm pri" data-act="soaXls">⬇ Excel</button><button class="btn sm" data-act="print">⬇ PDF / Cetak</button></div>' : '') + '</section>';
+      '<div class="soa-dates"><label>From <input type="date" class="inp" id="sf" value="' + esc(q.from) + '"></label><label>To <input type="date" class="inp" id="st" value="' + esc(q.to) + '"></label><button class="btn sm" data-act="soaGo">Show</button></div>' +
+      (S.soa && S.soa.soa ? '<div class="soa-dl"><button class="btn sm pri" data-act="soaXls">⬇ Excel</button><button class="btn sm" data-act="print">⬇ PDF / Print</button></div>' : '') + '</section>';
   }
   function soaBody(r) {
     var s = r.soa, v = s.sup, agTot = s.aging.reduce(function (a, x) { return a + x.v; }, 0), lateAmt = agTot - s.aging[0].v;
-    var head = '<section class="glass pad soa-head"><div><div class="kicker">Penyata Akaun Supplier · Statement of Account</div><h2>' + esc(v.key) + '</h2>' +
-      '<div class="meta">' + (v.kod ? chip(v.kod) : '') + chip('Terma ' + (v.terma || '—') + ' hari') + chip('Bayar ' + (v.hari || '—')) + (v.email ? '<span class="chip">✉ ' + esc(v.email) + '</span>' : '<span class="chip w">' + esc(v.chan || 'Tiada emel') + '</span>') + (v.folder ? '<a class="chip" href="' + esc(v.folder) + '" target="_blank" rel="noopener">📁 Folder invois & slip</a>' : '') + '</div>' +
-      '<div class="note">Tempoh ' + dmy(s.from) + ' – ' + dmy(s.to) + ' · disediakan ' + dmy(r.today) + ' oleh ' + esc(S.me.name) + ' · Sofwah Arabiata (M) Sdn Bhd</div></div>' +
-      '<div class="soa-bal"><small>Baki akhir (terhutang)</small><b>' + rmf(s.close) + '</b><span>' + (lateAmt ? '<i class="r">' + rmf(lateAmt) + ' lewat</i>' : '<i class="g">Tiada tunggakan lewat</i>') + '</span></div></section>';
+    var head = '<section class="glass pad soa-head"><div><div class="kicker">Supplier Statement of Account</div><h2>' + esc(v.key) + '</h2>' +
+      '<div class="meta">' + (v.kod ? chip(v.kod) : '') + chip('Terms ' + (v.terma || '—') + ' days') + chip('Pay day: ' + (en(v.hari) || '—')) + (v.email ? '<span class="chip">✉ ' + esc(v.email) + '</span>' : '<span class="chip w">' + esc(v.chan || 'No email') + '</span>') + (v.folder ? '<a class="chip" href="' + esc(v.folder) + '" target="_blank" rel="noopener">📁 Invoice & slip folder</a>' : '') + '</div>' +
+      '<div class="note">Period ' + dmy(s.from) + ' – ' + dmy(s.to) + ' · prepared ' + dmy(r.today) + ' by ' + esc(S.me.name) + ' · Sofwah Arabiata (M) Sdn Bhd</div></div>' +
+      '<div class="soa-bal"><small>Closing balance (outstanding)</small><b>' + rmf(s.close) + '</b><span>' + (lateAmt ? '<i class="r">' + rmf(lateAmt) + ' overdue</i>' : '<i class="g">Nothing overdue</i>') + '</span></div></section>';
     var tiles = '<section class="cards soa-k">' + [
-      ['Belian tempoh', rmf(s.spend), s.invN + ' invois · purata ' + rmf(s.avgInv)],
-      ['Bahagian AP', s.share === null ? '—' : s.share.toFixed(1) + '%', s.rank ? 'Ranking #' + s.rank + ' / ' + s.ranks + ' supplier' : ''],
-      ['Unjuran setahun', rmf(s.annual), 'Asas rundingan 2027'],
-      ['Hari bayar purata (DPO)', s.dpo === null ? '—' : Math.round(s.dpo) + ' hari', s.paidN + ' invois dibayar'],
-      ['Bayar tepat masa', s.ontime === null ? '—' : Math.round(s.ontime) + '%', 'Sasaran ≥ 95%']
+      ['Purchases (period)', rmf(s.spend), s.invN + ' invoices · average ' + rmf(s.avgInv)],
+      ['Share of AP spend', s.share === null ? '—' : s.share.toFixed(1) + '%', s.rank ? 'Rank #' + s.rank + ' / ' + s.ranks + ' suppliers' : ''],
+      ['Annualised run-rate', rmf(s.annual), 'Basis for 2027 negotiation'],
+      ['Days payable outstanding (DPO)', s.dpo === null ? '—' : Math.round(s.dpo) + ' days', s.paidN + ' invoices paid'],
+      ['On-time payment rate', s.ontime === null ? '—' : Math.round(s.ontime) + '%', 'Target ≥ 95%']
     ].map(function (k) { return '<div class="glass card"><small>' + esc(k[0]) + '</small><div class="v">' + esc(k[1]) + '</div><span class="note">' + esc(k[2]) + '</span></div>'; }).join('') + '</section>';
-    var recon = '<div class="soa-rec"><div><small>Baki awal ' + dmy(s.from) + '</small><b>' + rmf(s.open) + '</b></div><span>+</span><div><small>Invois (debit)</small><b>' + rmf(s.dr) + '</b></div><span>−</span><div><small>Bayaran (kredit)</small><b>' + rmf(s.cr) + '</b></div><span>=</span><div class="tot"><small>Baki akhir ' + dmy(s.to) + '</small><b>' + rmf(s.close) + '</b></div></div>';
-    var txRows = '<tr class="ob"><td>' + dmy(s.from) + '</td><td></td><td></td><td>Baki dibawa ke hadapan</td><td></td><td></td><td class="n"><b>' + rmf(s.open) + '</b></td></tr>' + s.tx.map(function (t) {
-      return '<tr><td>' + dmy(t.d) + '</td><td>' + (t.t === 'INV' ? '<span class="chip">INV</span>' : '<span class="chip g">BYR</span>') + '</td><td>' + (/^https?:/.test(t.file || '') ? '<a href="' + esc(t.file) + '" target="_blank" rel="noopener">' + esc(t.ref) + '</a>' : esc(t.ref)) + '</td><td>' + esc(t.desc) + '</td><td class="n">' + (t.dr ? rmf(t.dr) : '') + '</td><td class="n">' + (t.cr ? rmf(t.cr) : '') + '</td><td class="n">' + rmf(t.bal) + '</td></tr>';
-    }).join('') + '<tr class="ob"><td>' + dmy(s.to) + '</td><td></td><td></td><td><b>Baki akhir</b></td><td class="n"><b>' + rmf(s.dr) + '</b></td><td class="n"><b>' + rmf(s.cr) + '</b></td><td class="n"><b>' + rmf(s.close) + '</b></td></tr>';
-    var stmt = '<section class="glass pad"><div class="sec-h"><h3>Penyata akaun</h3><span class="note">' + s.tx.length + ' transaksi · klik rujukan untuk buka invois / slip</span></div>' + recon +
-      '<div class="tw"><table class="t soa-t"><thead><tr><th>Tarikh</th><th>Jenis</th><th>Rujukan</th><th>Butiran</th><th class="n">Debit (invois)</th><th class="n">Kredit (bayaran)</th><th class="n">Baki</th></tr></thead><tbody>' + txRows + '</tbody></table></div></section>';
+    var recon = '<div class="soa-rec"><div><small>Opening balance ' + dmy(s.from) + '</small><b>' + rmf(s.open) + '</b></div><span>+</span><div><small>Invoices (debit)</small><b>' + rmf(s.dr) + '</b></div><span>−</span><div><small>Payments (credit)</small><b>' + rmf(s.cr) + '</b></div><span>=</span><div class="tot"><small>Closing balance ' + dmy(s.to) + '</small><b>' + rmf(s.close) + '</b></div></div>';
+    var txRows = '<tr class="ob"><td>' + dmy(s.from) + '</td><td></td><td></td><td>Balance brought forward</td><td></td><td></td><td class="n"><b>' + rmf(s.open) + '</b></td></tr>' + s.tx.map(function (t) {
+      return '<tr><td>' + dmy(t.d) + '</td><td>' + (t.t === 'INV' ? '<span class="chip">INV</span>' : '<span class="chip g">PMT</span>') + '</td><td>' + (/^https?:/.test(t.file || '') ? '<a href="' + esc(t.file) + '" target="_blank" rel="noopener">' + esc(t.ref) + '</a>' : esc(t.ref)) + '</td><td>' + esc(t.desc) + '</td><td class="n">' + (t.dr ? rmf(t.dr) : '') + '</td><td class="n">' + (t.cr ? rmf(t.cr) : '') + '</td><td class="n">' + rmf(t.bal) + '</td></tr>';
+    }).join('') + '<tr class="ob"><td>' + dmy(s.to) + '</td><td></td><td></td><td><b>Closing balance</b></td><td class="n"><b>' + rmf(s.dr) + '</b></td><td class="n"><b>' + rmf(s.cr) + '</b></td><td class="n"><b>' + rmf(s.close) + '</b></td></tr>';
+    var stmt = '<section class="glass pad"><div class="sec-h"><h3>Statement of account</h3><span class="note">' + s.tx.length + ' transactions · click a reference to open the invoice / slip</span></div>' + recon +
+      '<div class="tw"><table class="t soa-t"><thead><tr><th>Date</th><th>Type</th><th>Reference</th><th>Description</th><th class="n">Debit (invoices)</th><th class="n">Credit (payments)</th><th class="n">Running balance</th></tr></thead><tbody>' + txRows + '</tbody></table></div></section>';
     var agCols = ['g', 'y', 'o', 'r', 'r'];
-    var aging = '<section class="glass pad"><div class="sec-h"><h3>Umur hutang (aging) pada ' + dmy(s.to) + '</h3><span class="note">Ikut hari selepas tarikh jatuh tempo</span></div>' +
+    var aging = '<section class="glass pad"><div class="sec-h"><h3>AP aging as at ' + dmy(s.to) + '</h3><span class="note">By days past the due date</span></div>' +
       '<div class="agebar">' + s.aging.map(function (a, i) { return a.v ? '<i class="' + agCols[i] + '" style="flex:' + a.v + '" title="' + esc(a.l) + '"></i>' : ''; }).join('') + (agTot ? '' : '<i class="g" style="flex:1"></i>') + '</div>' +
-      '<div class="agegrid">' + s.aging.map(function (a, i) { return '<div><span class="dot ' + (agCols[i] === 'o' ? 'y' : agCols[i]) + '"></span><small>' + esc(a.l) + '</small><b>' + rmf(a.v) + '</b><em>' + a.n + ' invois · ' + (agTot ? Math.round(a.v / agTot * 100) : 0) + '%</em></div>'; }).join('') + '</div>' +
-      (s.openInv.length ? '<details' + (lateAmt ? ' open' : '') + '><summary class="note" style="cursor:pointer;margin-top:10px">Senarai invois belum dibayar (' + s.openInv.length + ')</summary><div class="tw" style="margin-top:8px"><table class="t"><thead><tr><th>No. invois</th><th>Cawangan</th><th>Tarikh</th><th>Jatuh tempo</th><th class="n">Hari lewat</th><th class="n">Amaun</th><th>Status</th></tr></thead><tbody>' +
-        s.openInv.map(function (x) { return '<tr><td>' + (/^https?:/.test(x.file || '') ? '<a href="' + esc(x.file) + '" target="_blank" rel="noopener">' + esc(x.inv || x.id) + '</a>' : esc(x.inv || x.id)) + '</td><td>' + esc(CAWN[x.caw] || x.caw) + '</td><td>' + dmy(x.d) + '</td><td>' + dmy(x.due) + '</td><td class="n">' + (x.late > 0 ? '<b style="color:#ff8b8b">' + x.late + '</b>' : '—') + '</td><td class="n">' + rmf(x.amt) + '</td><td>' + chip(x.st, x.st === 'Diluluskan' ? 'g' : 'w') + '</td></tr>'; }).join('') + '</tbody></table></div></details>' : '') + '</section>';
+      '<div class="agegrid">' + s.aging.map(function (a, i) { return '<div><span class="dot ' + (agCols[i] === 'o' ? 'y' : agCols[i]) + '"></span><small>' + esc(a.l) + '</small><b>' + rmf(a.v) + '</b><em>' + a.n + ' invoices · ' + (agTot ? Math.round(a.v / agTot * 100) : 0) + '%</em></div>'; }).join('') + '</div>' +
+      (s.openInv.length ? '<details' + (lateAmt ? ' open' : '') + '><summary class="note" style="cursor:pointer;margin-top:10px">Unpaid invoices (' + s.openInv.length + ')</summary><div class="tw" style="margin-top:8px"><table class="t"><thead><tr><th>Invoice no.</th><th>Branch</th><th>Date</th><th>Due date</th><th class="n">Days overdue</th><th class="n">Amount</th><th>Status</th></tr></thead><tbody>' +
+        s.openInv.map(function (x) { return '<tr><td>' + (/^https?:/.test(x.file || '') ? '<a href="' + esc(x.file) + '" target="_blank" rel="noopener">' + esc(x.inv || x.id) + '</a>' : esc(x.inv || x.id)) + '</td><td>' + esc(CAWN[x.caw] || x.caw) + '</td><td>' + dmy(x.d) + '</td><td>' + dmy(x.due) + '</td><td class="n">' + (x.late > 0 ? '<b style="color:#ff8b8b">' + x.late + '</b>' : '—') + '</td><td class="n">' + rmf(x.amt) + '</td><td>' + chip(en(x.st), x.st === 'Diluluskan' ? 'g' : 'w') + '</td></tr>'; }).join('') + '</tbody></table></div></details>' : '') + '</section>';
     var cawMax = s.byCaw.length ? s.byCaw[0].v : 1;
-    var charts = '<section class="grid2"><div class="glass pad"><div class="sec-h"><h3>Belian ikut bulan</h3></div>' + barChart(s.months.map(function (m) { return { l: m.m.slice(5) + '/' + m.m.slice(2, 4), v: m.v }; }), { a: 'Belian (RM)', w: 560 }) + '</div>' +
-      '<div class="glass pad"><div class="sec-h"><h3>Belian ikut cawangan</h3></div>' + (s.byCaw.length ? hbars(s.byCaw.map(function (c) { return { l: CAWN[c.caw] || c.caw, v: s.spend ? c.v / s.spend * 100 : 0, sub: rmf(c.v), lamp: 'g' }; }), { max: 100 }) : '<div class="empty">Tiada belian dalam tempoh</div>') + '</div></section>';
-    var items = '<section class="glass pad"><div class="sec-h"><div><h3>Item & harga</h3><div class="note">Dari tab AP › Item Invois · ' + s.itemRows + ' baris</div></div></div>' + (s.items.length ?
-      '<div class="tw"><table class="t"><thead><tr><th>Item</th><th>Unit</th><th class="n">Kuantiti</th><th class="n">Jumlah</th><th class="n">Harga purata</th><th class="n">Min – Maks</th><th class="n">Terkini</th><th class="n">Perubahan</th></tr></thead><tbody>' +
-      s.items.map(function (o) { return '<tr><td><b>' + esc(o.item) + '</b><div class="muted" style="font-size:11px">' + o.n + ' kali dibeli</div></td><td>' + esc(o.unit || '—') + '</td><td class="n">' + fnum(o.qty, o.qty % 1 ? 2 : 0) + '</td><td class="n">' + rmf(o.amt) + '</td><td class="n">' + (o.avg ? rmf(o.avg) : '—') + '</td><td class="n">' + (o.pmin !== null ? rmf(o.pmin) + ' – ' + rmf(o.pmax) : '—') + '</td><td class="n">' + (o.plast !== null ? rmf(o.plast) : '—') + '</td><td class="n">' + (o.chg === null ? '—' : '<b style="color:' + (o.chg > 0.5 ? '#ff8b8b' : o.chg < -0.5 ? '#2fe07a' : 'inherit') + '">' + (o.chg > 0 ? '+' : '') + o.chg.toFixed(1) + '%</b>') + '</td></tr>'; }).join('') + '</tbody></table></div>'
-      : '<div class="empty">Belum ada butiran item untuk vendor ini. Rekod item, kuantiti dan harga di tab <b>Item Invois</b> (fail AP) semasa invois direkod — FIRAX akan kira volum dan perubahan harga secara automatik.</div>') + '</section>';
-    var tips = '<section class="glass pad soa-tips"><div class="sec-h"><h3>🎯 Petunjuk rundingan supplier 2027</h3><span class="note">Dijana daripada data, bukan andaian</span></div>' + s.tips.map(function (t) { return '<div class="tip"><span class="dot ' + t[0] + '"></span><p>' + esc(t[1]) + '</p></div>'; }).join('') + '</section>';
+    var charts = '<section class="grid2"><div class="glass pad"><div class="sec-h"><h3>Purchases by month</h3></div>' + barChart(s.months.map(function (m) { return { l: m.m.slice(5) + '/' + m.m.slice(2, 4), v: m.v }; }), { a: 'Purchases (RM)', w: 560 }) + '</div>' +
+      '<div class="glass pad"><div class="sec-h"><h3>Purchases by branch</h3></div>' + (s.byCaw.length ? hbars(s.byCaw.map(function (c) { return { l: CAWN[c.caw] || c.caw, v: s.spend ? c.v / s.spend * 100 : 0, sub: rmf(c.v), lamp: 'g' }; }), { max: 100 }) : '<div class="empty">No purchases in this period</div>') + '</div></section>';
+    var items = '<section class="glass pad"><div class="sec-h"><div><h3>Items & pricing</h3><div class="note">From AP › Item Invois tab · ' + s.itemRows + ' rows</div></div></div>' + (s.items.length ?
+      '<div class="tw"><table class="t"><thead><tr><th>Item</th><th>Unit</th><th class="n">Quantity</th><th class="n">Amount</th><th class="n">Average price</th><th class="n">Min – Max</th><th class="n">Latest</th><th class="n">Change</th></tr></thead><tbody>' +
+      s.items.map(function (o) { return '<tr><td><b>' + esc(o.item) + '</b><div class="muted" style="font-size:11px">' + o.n + ' purchases</div></td><td>' + esc(o.unit || '—') + '</td><td class="n">' + fnum(o.qty, o.qty % 1 ? 2 : 0) + '</td><td class="n">' + rmf(o.amt) + '</td><td class="n">' + (o.avg ? rmf(o.avg) : '—') + '</td><td class="n">' + (o.pmin !== null ? rmf(o.pmin) + ' – ' + rmf(o.pmax) : '—') + '</td><td class="n">' + (o.plast !== null ? rmf(o.plast) : '—') + '</td><td class="n">' + (o.chg === null ? '—' : '<b style="color:' + (o.chg > 0.5 ? '#ff8b8b' : o.chg < -0.5 ? '#2fe07a' : 'inherit') + '">' + (o.chg > 0 ? '+' : '') + o.chg.toFixed(1) + '%</b>') + '</td></tr>'; }).join('') + '</tbody></table></div>'
+      : '<div class="empty">No item details for this vendor yet. Record items, quantities and prices in the <b>Item Invois</b> tab (AP file) when invoices are entered — FIRAX will calculate volumes and price changes automatically.</div>') + '</section>';
+    var tips = '<section class="glass pad soa-tips"><div class="sec-h"><h3>🎯 Supplier negotiation insights 2027</h3><span class="note">Generated from data, not assumptions</span></div>' + s.tips.map(function (t) { return '<div class="tip"><span class="dot ' + t[0] + '"></span><p>' + esc(t[1]) + '</p></div>'; }).join('') + '</section>';
     return head + tiles + tips + stmt + aging + charts + items;
   }
   A.soaPick = function (el) { S.soaQ.sup = el.getAttribute('data-k'); view('<div class="skel" style="height:300px"></div>'); renderSoa(); window.scrollTo(0, 0); };
   A.soaP = function (el) { var p = el.getAttribute('data-p'), rg = soaRange(p, S.soa.today); S.soaQ.p = p; S.soaQ.from = rg[0]; S.soaQ.to = rg[1]; renderSoa(); };
-  A.soaGo = function () { var f = val('sf'), t = val('st'); if (!f || !t) { toast('Pilih tarikh', true); return; } S.soaQ.from = f; S.soaQ.to = t; S.soaQ.p = ''; renderSoa(); };
+  A.soaGo = function () { var f = val('sf'), t = val('st'); if (!f || !t) { toast('Select dates', true); return; } S.soaQ.from = f; S.soaQ.to = t; S.soaQ.p = ''; renderSoa(); };
   A.soaXls = function () {
     var r = S.soa, s = r.soa, v = s.sup, name = 'SOA ' + v.short + ' ' + dmy(s.from).replace(/\//g, '') + '-' + dmy(s.to).replace(/\//g, '');
-    var st = [['PENYATA AKAUN SUPPLIER (STATEMENT OF ACCOUNT)'], ['Sofwah Arabiata (M) Sdn Bhd'], ['Supplier', v.key], ['Kod', v.kod], ['Terma (hari)', v.terma], ['Tempoh', dmy(s.from) + ' – ' + dmy(s.to)], ['Disediakan', dmy(r.today) + ' oleh ' + S.me.name], [],
-      ['Tarikh', 'Jenis', 'Rujukan', 'Butiran', 'Debit (invois) RM', 'Kredit (bayaran) RM', 'Baki RM'], [dmy(s.from), '', '', 'Baki dibawa ke hadapan', '', '', r2(s.open)]]
-      .concat(s.tx.map(function (t) { return [dmy(t.d), t.t === 'INV' ? 'Invois' : 'Bayaran', t.ref, t.desc, t.dr ? r2(t.dr) : '', t.cr ? r2(t.cr) : '', t.bal]; }))
-      .concat([[dmy(s.to), '', '', 'BAKI AKHIR', r2(s.dr), r2(s.cr), r2(s.close)]]);
-    var ag = [['UMUR HUTANG pada ' + dmy(s.to)], ['Kategori', 'Bil. invois', 'Amaun RM']].concat(s.aging.map(function (a) { return [a.l, a.n, r2(a.v)]; })).concat([[], ['No. invois', 'Cawangan', 'Tarikh', 'Jatuh tempo', 'Hari lewat', 'Amaun RM', 'Status']])
-      .concat(s.openInv.map(function (x) { return [x.inv || x.id, CAWN[x.caw] || x.caw, dmy(x.d), dmy(x.due), Math.max(0, x.late), r2(x.amt), x.st]; }));
-    var an = [['ANALISIS & RUNDINGAN 2027'], ['Belian tempoh RM', r2(s.spend)], ['Bil. invois', s.invN], ['Purata invois RM', r2(s.avgInv)], ['Bahagian AP %', s.share === null ? '' : r2(s.share)], ['Ranking', s.rank + ' / ' + s.ranks], ['Unjuran setahun RM', r2(s.annual)], ['Hari bayar purata (DPO)', s.dpo === null ? '' : Math.round(s.dpo)], ['Bayar tepat masa %', s.ontime === null ? '' : Math.round(s.ontime)], [],
-      ['Bulan', 'Belian RM']].concat(s.months.map(function (m) { return [m.m, m.v]; })).concat([[], ['Cawangan', 'Belian RM']]).concat(s.byCaw.map(function (c) { return [CAWN[c.caw] || c.caw, r2(c.v)]; })).concat([[], ['Petunjuk']]).concat(s.tips.map(function (t) { return [t[1]]; }));
-    var it = [['Item', 'Unit', 'Kuantiti', 'Jumlah RM', 'Harga purata RM', 'Harga min RM', 'Harga maks RM', 'Harga terkini RM', 'Perubahan %', 'Kali dibeli']].concat(s.items.map(function (o) { return [o.item, o.unit, r2(o.qty), r2(o.amt), o.avg ? r2(o.avg) : '', o.pmin, o.pmax, o.plast, o.chg === null ? '' : r2(o.chg), o.n]; }));
-    dlXlsx(name, [{ n: 'Penyata', rows: st, w: [12, 9, 16, 46, 16, 16, 14] }, { n: 'Umur hutang', rows: ag, w: [22, 14, 12, 12, 10, 12, 12] }, { n: 'Analisis', rows: an, w: [26, 16] }, { n: 'Item & harga', rows: it, w: [30, 8, 10, 12, 14, 12, 12, 14, 12, 10] }]);
+    var st = [['SUPPLIER STATEMENT OF ACCOUNT'], ['Sofwah Arabiata (M) Sdn Bhd'], ['Supplier', v.key], ['Code', v.kod], ['Credit terms (days)', v.terma], ['Period', dmy(s.from) + ' – ' + dmy(s.to)], ['Prepared', dmy(r.today) + ' by ' + S.me.name], [],
+      ['Date', 'Type', 'Reference', 'Description', 'Debit (invoices) RM', 'Credit (payments) RM', 'Running balance RM'], [dmy(s.from), '', '', 'Balance brought forward', '', '', r2(s.open)]]
+      .concat(s.tx.map(function (t) { return [dmy(t.d), t.t === 'INV' ? 'Invoice' : 'Payment', t.ref, t.desc, t.dr ? r2(t.dr) : '', t.cr ? r2(t.cr) : '', t.bal]; }))
+      .concat([[dmy(s.to), '', '', 'CLOSING BALANCE', r2(s.dr), r2(s.cr), r2(s.close)]]);
+    var ag = [['AP AGING as at ' + dmy(s.to)], ['Category', 'No. of invoices', 'Amount RM']].concat(s.aging.map(function (a) { return [a.l, a.n, r2(a.v)]; })).concat([[], ['Invoice no.', 'Branch', 'Date', 'Due date', 'Days overdue', 'Amount RM', 'Status']])
+      .concat(s.openInv.map(function (x) { return [x.inv || x.id, CAWN[x.caw] || x.caw, dmy(x.d), dmy(x.due), Math.max(0, x.late), r2(x.amt), en(x.st)]; }));
+    var an = [['ANALYSIS & NEGOTIATION 2027'], ['Purchases (period) RM', r2(s.spend)], ['No. of invoices', s.invN], ['Average invoice RM', r2(s.avgInv)], ['Share of AP spend %', s.share === null ? '' : r2(s.share)], ['Rank', s.rank + ' / ' + s.ranks], ['Annualised run-rate RM', r2(s.annual)], ['Days payable outstanding (DPO)', s.dpo === null ? '' : Math.round(s.dpo)], ['On-time payment rate %', s.ontime === null ? '' : Math.round(s.ontime)], [],
+      ['Month', 'Purchases RM']].concat(s.months.map(function (m) { return [m.m, m.v]; })).concat([[], ['Branch', 'Purchases RM']]).concat(s.byCaw.map(function (c) { return [CAWN[c.caw] || c.caw, r2(c.v)]; })).concat([[], ['Insights']]).concat(s.tips.map(function (t) { return [t[1]]; }));
+    var it = [['Item', 'Unit', 'Quantity', 'Amount RM', 'Average price RM', 'Min price RM', 'Max price RM', 'Latest price RM', 'Change %', 'Times purchased']].concat(s.items.map(function (o) { return [o.item, o.unit, r2(o.qty), r2(o.amt), o.avg ? r2(o.avg) : '', o.pmin, o.pmax, o.plast, o.chg === null ? '' : r2(o.chg), o.n]; }));
+    dlXlsx(name, [{ n: 'Statement', rows: st, w: [12, 9, 16, 46, 16, 16, 14] }, { n: 'AP aging', rows: ag, w: [22, 14, 12, 12, 10, 12, 12] }, { n: 'Analysis', rows: an, w: [26, 16] }, { n: 'Items & pricing', rows: it, w: [30, 8, 10, 12, 14, 12, 12, 14, 12, 10] }]);
   };
   /* Muat turun senarai run bayaran (untuk M2U / rekod) */
   A.payXls = function () {
-    var r = S.pay, rows = [['SENARAI BAYARAN ' + r.day.toUpperCase() + ' ' + ymdS(r.ymd)], ['Hanya item Diluluskan. Nombor akaun bank rujuk M2U / fail HR (tidak disimpan di FIRAX).'], [], ['Penerima', 'Cawangan', 'No. invois / perkara', 'Tarikh invois', 'Jatuh tempo', 'Amaun RM', 'Status', 'Rujukan bayaran']];
-    r.groups.forEach(function (g) { g.items.forEach(function (x) { rows.push([g.label, CAWN[x.caw] || x.caw, x.inv, x.tinv, x.due, r2(x.amt), x.st, x.ref || '']); }); rows.push(['', '', '', '', 'Jumlah ' + g.label, r2(g.total), '', '']); });
-    if (r.hr) { (r.sambilan || []).forEach(function (p) { rows.push(['Sambilan · ' + p.name, CAWN[p.caw] || p.caw, p.rows.map(function (x) { return x.mon; }).join(', '), '', '', r2(p.amt), p.hold ? 'DITAHAN — jangan bayar' : p.final ? 'Boleh dibayar' : 'Belum muktamad', '']); }); (r.bday || []).forEach(function (b) { rows.push(['Hadiah hari jadi · ' + b.name, CAWN[b.caw] || b.caw, 'Hari jadi ' + b.bd, '', ymdS(b.pay), 100, 'Belum dibayar', '']); }); }
-    rows.push([], ['', '', '', '', 'JUMLAH PERLU DIBAYAR', r2(r.sum.due - r.sum.paid)]);
-    dlXlsx('Bayaran ' + r.day + ' ' + ymdS(r.ymd).replace(/\//g, ''), [{ n: 'Senarai bayaran', rows: rows, w: [30, 14, 20, 12, 18, 12, 20, 18] }]);
+    var r = S.pay, rows = [['PAYMENT LIST ' + r.day.toUpperCase() + ' ' + ymdS(r.ymd)], ['Approved items only. For bank account numbers, see M2U / the HR file (not stored in FIRAX).'], [], ['Payee', 'Branch', 'Invoice no. / item', 'Invoice date', 'Due date', 'Amount RM', 'Status', 'Payment reference']];
+    r.groups.forEach(function (g) { g.items.forEach(function (x) { rows.push([g.label, CAWN[x.caw] || x.caw, x.inv, x.tinv, x.due, r2(x.amt), x.st, x.ref || '']); }); rows.push(['', '', '', '', 'Total ' + g.label, r2(g.total), '', '']); });
+    if (r.hr) { (r.sambilan || []).forEach(function (p) { rows.push(['Part-time · ' + p.name, CAWN[p.caw] || p.caw, p.rows.map(function (x) { return x.mon; }).join(', '), '', '', r2(p.amt), p.hold ? 'ON HOLD — do not pay' : p.final ? 'Payable' : 'Not final yet', '']); }); (r.bday || []).forEach(function (b) { rows.push(['Birthday gift · ' + b.name, CAWN[b.caw] || b.caw, 'Birthday ' + b.bd, '', ymdS(b.pay), 100, 'Not yet paid', '']); }); }
+    rows.push([], ['', '', '', '', 'TOTAL TO PAY', r2(r.sum.due - r.sum.paid)]);
+    dlXlsx('Payments ' + r.day + ' ' + ymdS(r.ymd).replace(/\//g, ''), [{ n: 'Payment list', rows: rows, w: [30, 14, 20, 12, 18, 12, 20, 18] }]);
   };
 
   /* ======================= acara & mula ======================= */
