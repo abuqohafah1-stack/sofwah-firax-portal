@@ -231,7 +231,7 @@
     if (k === 'del') S.pin = S.pin.slice(0, -1); else if (S.pin.length < 4) S.pin += k;
     dots(); if (S.pin.length === 4) submitPin();
   };
-  A.back = function () { if (S.token) { rpc('fxLogout', [S.token]).catch(function () {}); sset(TK, null); } dropKept(); S.token = null; S.home = null; S.pages = {}; S.acts = null; S.rt = null; S.pay = null; S.soa = null; S.payT = null; renderLogin(); };
+  A.back = function () { if (S.token) { rpc('fxLogout', [S.token]).catch(function () {}); sset(TK, null); } dropKept(); S.token = null; S.home = null; S.pages = {}; S.acts = null; S.rt = null; S.pay = null; S.soa = null; S.payT = null; S.recon = null; renderLogin(); };
   A.logout = A.back;
   function submitPin() {
     var pin = S.pin; S.pin = ''; $$('.pinpad button').forEach(function (b) { b.disabled = true; });
@@ -299,17 +299,19 @@
   I.routine = '<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>';
   I.guide = '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/>';
   I.print = '<path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/>';
+  I.recon = '<path d="M4 8h14l-3-3"/><path d="M20 16H6l3 3"/>';
   I.search = '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>';
   I.more = '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>';
   /* Struktur v2.1: ikut KERJA pengguna, bukan ikut modul sheet. Bahasa mudah; kod M1–M14 hanya dalam tab. */
   var PG = {
     home: { t: 'Overview', i: 'home', sub: "Sofwah's finances in 30 seconds", q: 'Are our finances healthy today?' },
-    routine: { t: 'My Tasks', i: 'routine', sub: 'Daily, weekly & monthly checklists · step by step', q: 'What do I need to do today?' },
+    routine: { t: 'My Tasks', i: 'routine', sub: 'Daily, weekly & monthly checklists · step by step', q: 'What do I need to do today?' , task: 1 },
     actions: { t: 'Alerts', i: 'actions', sub: '🔴 issues to resolve · who, when, how', q: "What's wrong and who's handling it?" },
-    pay: { t: 'Payments', i: 'bank', sub: 'Sunday & Wednesday: suppliers · Tuesday: staff & HR · approved only', q: 'Who needs to be paid today?' },
-    soa: { t: 'Suppliers', i: 'bill', sub: 'Statement of account per supplier · balance owed, AP aging, purchases & pricing', q: 'How much do we owe and buy from this supplier?' },
+    pay: { t: 'Payments', i: 'bank', sub: 'Sunday & Wednesday: suppliers · Tuesday: staff & HR · approved only', q: 'Who needs to be paid today?' , task: 1 },
+    soa: { t: 'Suppliers', i: 'bill', sub: 'Statement of account per supplier · balance owed, AP aging, purchases & pricing', q: 'How much do we owe and buy from this supplier?' , task: 1 },
     cash: { t: 'Cash', i: 'cash', sub: 'Bank balances, cash flow and cash runway', q: 'Do we have enough cash?' },
-    sales: { t: 'Sales & Reconciliation', i: 'sales', sub: 'POS sales vs bank deposits · delivery payouts', q: 'Did all sales reach the bank?' },
+    recon: { t: 'Reconciliation', i: 'recon', sub: 'Weekly: bank statement → match POS sales → explain differences', task: 1 },
+    sales: { t: 'Sales & Payouts', i: 'sales', sub: 'Sales by branch, reconciliation report, delivery payouts', q: 'Did all sales reach the bank?' },
     profit: { t: 'Profit & Costs', i: 'profit', sub: 'Profit by branch, food cost, labour cost, AP & opex', q: 'Which branches make a profit, which costs are high?' },
     books: { t: 'Books & Audit', i: 'books', sub: 'QuickBooks P&L and balance sheet · audit findings', q: 'Are our books clean for audit?' },
     planning: { t: 'Planning', i: 'planning', sub: 'Breakeven, budget, forecast and new branches', q: 'How much do we need to sell to make a profit?' },
@@ -320,7 +322,7 @@
   };
   /** Kumpulan menu ikut peranan: staf akaun nampak kerja dahulu; CEO/FM nampak ringkasan & laporan dahulu. */
   function navGroups() {
-    var work = ["Today's work", ['routine', 'pay', 'soa', 'actions']], rep = ['Financial reports', ['cash', 'sales', 'profit', 'books', 'planning', 'control']], sys = ['Help', ['live', 'guide', 'settings']];
+    var work = ["Today's work", ['routine', 'recon', 'pay', 'soa', 'actions']], rep = ['Financial reports', ['cash', 'sales', 'profit', 'books', 'planning', 'control']], sys = ['Help', ['live', 'guide', 'settings']];
     var r = S.me && S.me.role;
     if (r === 'ACC') return [work, ['Overview', ['home']], rep, sys];
     if (r === 'BM' || r === 'VIEW') return [['', ['home', 'actions']], rep, ['Suppliers', ['soa']], sys];
@@ -334,7 +336,7 @@
     if (k === 'pay' && py && py.left) return '<span class="cnt g">' + py.left + '</span>';
     return '';
   }
-  function canSee(k) { return PG[k] && (!PG[k].ceo || S.me.role === 'CEO' || S.me.role === 'FM') && !(k === 'pay' && !S.me.canEdit && S.me.role !== 'CEO'); }
+  function canSee(k) { return PG[k] && (!PG[k].ceo || S.me.role === 'CEO' || S.me.role === 'FM') && !((k === 'pay' || k === 'recon') && !S.me.canEdit && S.me.role !== 'CEO'); }
   function navHtml() {
     return navGroups().map(function (g) {
       var items = g[1].filter(canSee).map(function (k) {
@@ -345,7 +347,7 @@
   }
   /** Bar bawah (telefon): 4 halaman paling kerap + Menu. */
   function tabbarHtml() {
-    var r = S.me && S.me.role, list = r === 'ACC' ? ['routine', 'pay', 'soa', 'actions'] : r === 'BM' || r === 'VIEW' ? ['home', 'actions', 'sales', 'profit'] : ['home', 'routine', 'pay', 'soa'];
+    var r = S.me && S.me.role, list = r === 'ACC' ? ['routine', 'recon', 'pay', 'soa'] : r === 'BM' || r === 'VIEW' ? ['home', 'actions', 'sales', 'profit'] : ['home', 'routine', 'pay', 'soa'];
     return '<nav class="tabbar">' + list.filter(canSee).map(function (k) { return '<button class="' + (S.page === k ? 'on' : '') + '" data-act="nav" data-p="' + k + '">' + ic(I[PG[k].i]) + '<span>' + PG[k].t + '</span>' + badgeFor(k) + '</button>'; }).join('') +
       '<button data-act="openSide">' + ic(I.menu) + '<span>Menu</span></button></nav>';
   }
@@ -353,8 +355,8 @@
   function sideCard() {
     var h = S.home; if (!h || !h.live) return '';
     var l = h.live;
-    return '<div class="side-card"><b>' + dot(l.status) + ' &nbsp;' + esc(unemo(l.status) || 'Status') + '</b><small>Data sources · ' + esc(l.sources || '—') + ' connected</small>' +
-      '<div class="row"><span class="muted">Oldest data</span><b>' + esc(l.oldest || '—') + '</b></div><div class="row"><span class="muted">Action 🔴</span><b style="color:#ff8b8b">' + esc(l.red || '0') + '</b></div></div>';
+    return '<div class="side-card"><b>' + dot(l.status) + ' &nbsp;' + esc(en(unemo(l.status)) || 'Status') + '</b><small>Data sources · ' + esc(l.sources || '—') + ' connected</small>' +
+      '<div class="row"><span class="muted">Oldest data</span><b>' + esc(String(l.oldest || '—').replace(/hari/, 'days')) + '</b></div><div class="row"><span class="muted">Action 🔴</span><b style="color:#ff8b8b">' + esc(l.red || '0') + '</b></div></div>';
   }
   function layout(inner) {
     var p = PG[S.page], live = S.home && S.home.live;
@@ -363,17 +365,17 @@
       '<main class="main"><header class="top glass"><button class="iconbtn burger" data-act="openSide" aria-label="Menu">' + ic(I.menu) + '</button>' +
       '<div class="grow"><h1>' + esc(p.t) + '</h1><div class="sub">' + esc(p.sub) + '</div></div>' +
       '<button class="pill srch" data-act="search" title="Search pages or suppliers ( / )">' + ic(I.search).replace('<svg', '<svg width="15" height="15"') + '<span class="hide-m">Search…</span><kbd class="hide-m">/</kbd></button>' +
-      (live ? '<span class="pill live hide-m">' + dot(live.status) + esc(unemo(live.status) || 'Live') + '</span>' : '') +
+      (live ? '<span class="pill live hide-m">' + dot(live.status) + esc(en(unemo(live.status)) || 'Live') + '</span>' : '') +
       '<button class="pill hide-m" data-act="refresh" title="Refresh data from the sheet">' + ic(I.refresh).replace('<svg', '<svg width="15" height="15"') + 'Refresh</button>' +
       '<button class="pill hide-m" data-act="print" title="Print / save this page as PDF">' + ic(I.print).replace('<svg', '<svg width="15" height="15"') + 'Print</button>' +
       '<button class="user" data-act="userMenu"><span class="av">' + esc(ini(S.me.name)) + '</span><b>' + esc(S.me.name) + '</b>' + ic(I.arrow).replace('<svg', '<svg width="14" height="14" style="transform:rotate(90deg)"') + '</button></header>' +
       '<div class="printh"><b>SOFWAH FIRAX</b> · ' + esc(p.t) + ' · printed ' + esc(new Date().toLocaleDateString('en-MY')) + ' by ' + esc(S.me.name) + '</div>' +
-      (p.q ? '<div class="pageq">' + ic(I.guide).replace('<svg', '<svg width="14" height="14"') + 'This page answers: <b>' + esc(p.q) + '</b></div>' : '') +
+      (p.q && !p.task ? '<div class="pageq">' + ic(I.guide).replace('<svg', '<svg width="14" height="14"') + 'This page answers: <b>' + esc(p.q) + '</b></div>' : '') +
       '<div id="view" class="stack">' + (inner || '<div class="skel" style="height:300px"></div><div class="skel" style="height:220px"></div>') + '</div></main>' + tabbarHtml() + '</div>';
   }
   function go(p, quiet) {
     if (!PG[p] || !canSee(p)) p = homePage(); S.page = p; sset('firax.p', p); closeModal();
-    var R = { home: renderHome, actions: renderActions, settings: renderSettings, routine: renderRoutine, guide: renderGuide, pay: renderPay, soa: renderSoa }[p] || renderModule;
+    var R = { home: renderHome, actions: renderActions, settings: renderSettings, routine: renderRoutine, guide: renderGuide, pay: renderPay, soa: renderSoa, recon: renderRecon }[p] || renderModule;
     if (quiet && $('#view')) { var y = window.scrollY; R(); setTimeout(function () { window.scrollTo(0, y); }, 30); return; }
     layout(); window.scrollTo(0, 0);
     R();
@@ -383,7 +385,7 @@
   A.closeSide = function () { var s = $('#side'); if (s) s.classList.remove('open'); var c = $('#scrim'); if (c) c.classList.remove('open'); };
   A.refresh = function (el) {
     if (el) el.disabled = true; toast('Refreshing from the FIRAX sheet…');
-    rpc('fxRefresh', [S.token]).then(function () { dropKept(); S.home = null; S.pages = {}; S.acts = null; S.rt = null; S.pay = null; S.soa = null; return rpc('fxHome', [S.token]); })
+    rpc('fxRefresh', [S.token]).then(function () { dropKept(); S.home = null; S.pages = {}; S.acts = null; S.rt = null; S.pay = null; S.soa = null; S.recon = null; return rpc('fxHome', [S.token]); })
       .then(function (h) { S.home = h; keep('home', h); go(S.page); toast('Data updated'); prefetch(); }).catch(function (e) { toast(e.error, true); if (el) el.disabled = false; });
   };
   A.userMenu = function () {
@@ -435,6 +437,7 @@
     var q = [];
     if (!S.rt) q.push(function () { return rpc('fxRoutine', [S.token]).then(function (r) { S.rt = r; keep('rt', r); refreshNav(); }); });
     if (S.me.canEdit || S.me.role === 'CEO') q.push(function () { return rpc('fxPay', [S.token, '']).then(function (r) { S.pay = r; S.payD = r.ymd; S.payT = { left: r.sum.n - r.sum.nPaid, due: r.sum.due - r.sum.paid, day: r.day, ymd: r.ymd, wait: r.wait.n, waitAmt: r.wait.amt }; keep('payT', S.payT); refreshNav(); var td = $('.tdays'); if (td && S.home) td.outerHTML = todayStrip(S.home); }); });
+    if (canSee('recon') && !S.recon) q.push(function () { return rpc('fxRecon', [S.token]).then(function (r) { S.recon = r; keep('recon', r); }); });
     if (!S.acts) q.push(function () { return rpc('fxActions', [S.token]).then(function (a) { S.acts = a; keep('acts', a); }); });
     Object.keys(FXPAGES).forEach(function (k) { if (!S.pages[k] && canSee(k)) q.push(function () { return rpc('fxPage', [S.token, k]).then(function (d) { S.pages[k] = d; keep('pg:' + k, d); }); }); });
     (function next() { var f = q.shift(); if (!f || !S.token) return; setTimeout(function () { f().catch(function () {}).then(next); }, 250); })();
@@ -814,25 +817,44 @@
   function link(u, t) { return /^https?:\/\//.test(u || '') ? '<a href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(t) + '</a>' : '<span class="muted">' + esc(u ? 'WhatsApp' : '—') + '</span>'; }
   function payView(r) {
     var tabs = '<section class="paytabs">' + r.runs.map(function (d) {
-      return '<button class="glass ptab' + (d.ymd === r.ymd ? ' on' : '') + '" data-act="payD" data-d="' + d.ymd + '"><small>' + (d.today ? 'TODAY · ' : d.past ? 'PAST · ' : '') + esc(d.dmy) + '</small><b>' + esc(d.day) + '</b><span>' + (d.hr ? 'HR: staff, part-time, birthdays' : 'Supplier / vendor') + '</span></button>';
+      var badge = d.past && d.left ? '<em class="pbad">' + d.left + ' unpaid</em>' : '';
+      return '<button class="glass ptab' + (d.ymd === r.ymd ? ' on' : '') + (d.past ? ' past' : '') + '" data-act="payD" data-d="' + d.ymd + '"><small>' + (d.today ? 'TODAY · ' : d.past ? 'LAST RUN · ' : 'NEXT · ') + esc(d.dmy) + '</small><b>' + esc(d.day) + '</b><span>' + (d.hr ? 'Staff & HR' : 'Suppliers') + '</span>' + badge + '</button>';
     }).join('') + '</section>';
-    var s = r.sum, left = s.n - s.nPaid;
-    var tiles = '<section class="sumtiles">' +
-      '<div class="glass sumtile"><div><b>' + rmf(s.due - s.paid) + '</b><small>To pay this run</small></div></div>' +
-      '<div class="glass sumtile"><div><b>' + left + '</b><small>Payees not yet paid</small></div></div>' +
-      '<div class="glass sumtile"><div><b>' + rmf(s.paid) + '</b><small>Paid · ' + s.nPaid + ' payees</small></div></div>' +
-      '<div class="glass sumtile"><div><b style="color:var(--y)">' + r.wait.n + '</b><small>Not yet approved · ' + rmf(r.wait.amt) + ' (not paid)</small></div></div></section>';
-    var steps = [['1', 'Open payment folder', 'All invoices for this run are in one Drive folder.'], ['2', 'Pay in M2U Biz', 'Use the amount on each card. One supplier = one transaction.'], ['3', 'Mark as paid', 'Upload the slip and enter the M2U reference.'], ['4', 'The system does the rest', 'The slip is renamed and filed in the supplier folder' + (r.autoMail ? ', and a supplier email reply is sent' : '') + '.']];
-    var how = '<section class="glass pad"><div class="sec-h"><div><div class="kicker">' + esc(r.day) + ' · ' + esc(ymdS(r.ymd)) + (r.hr ? ' · HR only' : ' · Suppliers') + '</div><h3 style="margin-top:6px">Only items on this list are paid</h3></div>' +
-      (r.canEdit ? '<div class="row-btn" style="margin:0"><button class="btn" data-act="payXls">⬇ Excel</button><button class="btn" data-act="payFile">' + ic(I.refresh) + 'File & rename invoices</button><button class="btn pri" data-act="payFolder">' + ic(I.books) + 'Open payment folder</button></div>' : '') + '</div>' +
-      '<div class="steps4">' + steps.map(function (x) { return '<div><span>' + x[0] + '</span><b>' + esc(x[1]) + '</b><p>' + esc(x[2]) + '</p></div>'; }).join('') + '</div></section>';
+    var s = r.sum, left = s.n - s.nPaid, toPay = s.due - s.paid;
+    var dueWait = r.wait.list.filter(function (x) { var d = String(x.due || '').split('/'); return d.length === 3 && d[2] + '-' + d[1] + '-' + d[0] <= r.ymd; });
+    var st1 = r.wait.n ? (r.canApprove ? 'todo' : 'wait') : 'ok', st2 = left ? 'todo' : s.n ? 'ok' : 'none', st3 = s.nPaid && !left ? 'ok' : s.nPaid ? 'todo' : 'none';
+    var flow = '<section class="payflow">' +
+      stepBox(1, 'Approve', r.wait.n ? r.wait.n + ' invoice' + (r.wait.n > 1 ? 's' : '') + ' waiting · ' + rmf(r.wait.amt) : 'Nothing waiting', st1, r.wait.n ? 'payGoApprove' : '') +
+      stepBox(2, 'Pay in Maybank2u Biz', left ? left + ' payee' + (left > 1 ? 's' : '') + ' · ' + rmf(toPay) : s.n ? 'All paid ✓' : 'Nothing approved for this run', st2, '') +
+      stepBox(3, 'Upload slips', s.n ? s.nPaid + ' of ' + s.n + ' done' : '—', st3, '') + '</section>';
+    var bar = '<section class="glass pad paybar"><div><div class="kicker">' + esc(r.day) + ' ' + esc(ymdS(r.ymd)) + (r.hr ? ' · Staff & HR run' : ' · Supplier run') + '</div><div class="paybig">' + (left ? rmf(toPay) + ' <small>to pay · ' + left + ' payee' + (left > 1 ? 's' : '') + '</small>' : s.n ? '✅ All paid' : 'Nothing to pay yet') + '</div></div>' +
+      '<div class="row-btn" style="margin:0;flex-wrap:wrap">' + (r.m2u ? '<a class="btn pri" href="' + esc(r.m2u) + '" target="_blank" rel="noopener">' + ic(I.bank) + 'Open Maybank2u Biz ↗</a>' : '') +
+      (r.canEdit && s.n ? '<button class="btn" data-act="payFolder">' + ic(I.books) + 'Invoices folder</button><button class="btn" data-act="payXls">⬇ Payment list</button>' : '') + '</div></section>';
     var body = '';
-    if (!r.groups.length && !(r.hr && (r.sambilan.length || r.bday.length))) body = '<section class="glass pad"><div class="empty">✅ No payments scheduled for this ' + esc(r.day) + '.' + (r.wait.n ? '<br>' + r.wait.n + ' invoices are still pending approval — see below.' : '') + '</div></section>';
+    if (!r.groups.length && !(r.hr && (r.sambilan.length || r.bday.length))) {
+      body = '<section class="glass pad payempty"><div class="pe-ic">' + (r.wait.n ? '⏳' : '✅') + '</div><div><h3>' + (r.wait.n ? 'No invoice is approved for this run yet' : 'Nothing scheduled for this ' + esc(r.day)) + '</h3><p class="note">' +
+        (r.wait.n ? 'Only <b>Approved</b> invoices appear here. ' + (dueWait.length ? '<b>' + dueWait.length + '</b> waiting invoice' + (dueWait.length > 1 ? 's are' : ' is') + ' already due by this run (' + rmf(dueWait.reduce(function (a, x) { return a + x.amt; }, 0)) + '). ' : '') + (r.canApprove ? 'Approve them below (step 1) and they move into this list immediately.' : 'Ask the Finance Manager to approve them in FIRAX › Payments.') : 'All invoices are paid or scheduled for a later run.') + '</p>' +
+        (r.wait.n && r.canApprove ? '<button class="btn pri" data-act="payGoApprove">Go to step 1 · Approve ↑</button>' : '') + '</div></section>';
+    }
     body += r.groups.map(function (g, i) { return supCard(r, g, i); }).join('');
     if (r.hr) body += sambilanCard(r) + bdayCard(r);
-    view(tabs + tiles + how + body + waitCard(r) +
-      '<div class="note" style="text-align:center">FIRAX does not make payments and does not store bank account numbers. Staff make payments in M2U Biz; the system only prepares the list, files slips and sends email replies.</div>');
+    var appr = r.canApprove && r.wait.n;
+    view(tabs + flow + (appr ? waitCard(r, dueWait) : '') + bar + body + (appr ? '' : waitCard(r, dueWait)) +
+      '<div class="note" style="text-align:center">FIRAX never makes payments and never stores bank account numbers. Pay in Maybank2u Biz using your saved favourites; FIRAX prepares the list, files slips and emails suppliers.</div>');
   }
+  function stepBox(n, t, sub, st, act) {
+    return '<' + (act ? 'button data-act="' + act + '"' : 'div') + ' class="glass pstep ' + st + '"><span class="pn">' + (st === 'ok' ? '✓' : n) + '</span><div><b>' + esc(t) + '</b><small>' + esc(sub) + '</small></div></' + (act ? 'button' : 'div') + '>';
+  }
+  /** Rujukan pendek untuk M2U (had 20 aksara): SOFWAH + 4 digit akhir invois. */
+  function payRef(g) { var r = 'SOFWAH ' + g.items.filter(function (x) { return x.st !== 'Dibayar'; }).map(function (x) { return String(x.inv || '').replace(/\D/g, '').slice(-4); }).filter(String).join(' '); return r.slice(0, 20).trim(); }
+  function copyTxt(t) {
+    var ok = function () { toast('Copied: ' + t); };
+    try { if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(t).then(ok).catch(function () { fb(); }); } catch (e) {}
+    fb();
+    function fb() { var a = document.createElement('textarea'); a.value = t; a.style.position = 'fixed'; a.style.opacity = '0'; document.body.appendChild(a); a.select(); try { document.execCommand('copy'); ok(); } catch (e) { toast('Copy not allowed here — select the text manually', true); } a.remove(); }
+  }
+  A.payCopy = function (el) { copyTxt(el.getAttribute('data-t')); };
+  A.payGoApprove = function () { var w = $('#approve'); if (w) { var d = w.querySelector('details'); if (d) d.open = true; w.scrollIntoView({ behavior: 'smooth', block: 'start' }); } };
   function ymdS(y) { var p = String(y).split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
   function supCard(r, g, i) {
     var done = g.paid >= g.total - 0.004, part = g.paid > 0 && !done, open = g.items.filter(function (x) { return x.st !== 'Dibayar'; });
@@ -843,7 +865,8 @@
       (g.items.some(function (x) { return x.late && x.st !== 'Dibayar'; }) ? '<span class="chip r">Overdue from previous run</span>' : '') +
       (mailSt ? '<span class="chip ' + (/Dihantar/.test(mailSt) ? 'g' : /Menunggu/.test(mailSt) ? 'y' : 'w') + '">' + esc(en(mailSt)) + '</span>' : '') +
       (g.folder ? '<a class="chip" href="' + esc(g.folder) + '" target="_blank" rel="noopener">📁 Supplier folder</a>' : '') + '</div></div>' +
-      '<div class="paytot"><small>' + (done ? 'Paid' : part ? 'Balance' : 'Amount to pay') + '</small><b>' + rmf(done ? g.total : g.total - g.paid) + '</b></div></div>';
+      '<div class="paytot"><small>' + (done ? 'Paid' : part ? 'Balance' : 'Amount to pay') + '</small><b>' + rmf(done ? g.total : g.total - g.paid) + '</b>' +
+      (!done && r.canEdit ? '<div class="copyrow"><button class="btn sm" data-act="payCopy" data-t="' + (g.total - g.paid).toFixed(2) + '">Copy amount</button><button class="btn sm" data-act="payCopy" data-t="' + esc(payRef(g)) + '">Copy reference</button></div>' : '') + '</div></div>';
     var rows = g.items.map(function (x) {
       return '<tr class="' + (x.st === 'Dibayar' ? 'paid' : '') + '"><td>' + esc(CAWN[x.caw] || x.caw) + '</td><td><b>' + show(x.inv) + '</b><div class="muted" style="font-size:11px">' + esc(x.id) + '</div></td><td>' + show(x.tinv) + '</td><td>' + show(x.due) + '</td><td class="n">' + rmf(x.amt) + '</td><td>' + link(x.file, x.std ? 'Invoice ✓' : 'Invoice') + '</td><td>' +
         (x.st === 'Dibayar' ? chip('✅ Paid ' + (x.paidOn || ''), 'g') + (x.slip ? ' ' + link(x.slip, 'Slip') : '') : r.canEdit ? '<label class="ck"><input type="checkbox" class="pk" data-g="' + i + '" value="' + x.row + '" checked> pay</label>' : chip('Not yet', 'y')) + '</td></tr>';
@@ -869,12 +892,13 @@
     return '<section class="glass pad"><div class="sec-h"><div><h3>🎁 Staff birthday gift · RM100</h3><div class="note">Paid on the first Tuesday after the birthday. List from AP › Hari Jadi Staf (QuickHR; IC not stored).</div></div><div class="paytot"><small>' + r.bday.length + ' staff</small><b>' + rmf(r.bday.length * 100) + '</b></div></div>' +
       (r.bday.length ? '<div class="tw"><table class="t"><thead><tr><th>Branch</th><th>Name</th><th>Birthday</th><th>Schedule</th><th class="n">Gift</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' + (r.canEdit ? '<div class="row-btn"><button class="btn pri" data-act="payMark" data-k="hadiah">Mark gifts as paid</button></div>' : '') : '<div class="empty">No birthday gifts to pay this week.</div>') + '</section>';
   }
-  function waitCard(r) {
-    if (!r.wait.n) return '';
+  function waitCard(r, dueWait) {
+    if (!r.wait.n) return ''; var dueRows = (dueWait || []).map(function (x) { return x.row; });
     var rows = r.wait.list.map(function (x) {
-      return '<tr><td>' + (r.canApprove ? '<input type="checkbox" class="pka" value="' + x.row + '">' : '') + '</td><td><b>' + esc(x.sup) + '</b><div class="muted" style="font-size:11px">' + esc(x.id) + (x.note ? ' · ' + esc(String(x.note).slice(0, 90)) : '') + '</div></td><td>' + esc(CAWN[x.caw] || x.caw) + '</td><td>' + show(x.inv) + '</td><td>' + show(x.due) + '</td><td class="n">' + rmf(x.amt) + '</td><td>' + chip(en(x.st), x.st === 'Disemak' ? 'y' : 'w') + '</td><td>' + link(x.file, 'Invoice') + '</td></tr>';
+      var due = dueRows.indexOf(x.row) >= 0;
+      return '<tr class="' + (due ? 'duehi' : '') + '"><td>' + (r.canApprove ? '<input type="checkbox" class="pka" value="' + x.row + '"' + (due ? ' checked' : '') + '>' : '') + '</td><td><b>' + esc(x.sup) + '</b>' + (due ? ' <span class="chip y">Due by this run</span>' : '') + '<div class="muted" style="font-size:11px">' + esc(x.id) + (x.note ? ' · ' + esc(String(x.note).slice(0, 90)) : '') + '</div></td><td>' + esc(CAWN[x.caw] || x.caw) + '</td><td>' + show(x.inv) + '</td><td>' + show(x.due) + '</td><td class="n">' + rmf(x.amt) + '</td><td>' + chip(en(x.st), x.st === 'Disemak' ? 'y' : 'w') + '</td><td>' + link(x.file, 'Invoice') + '</td></tr>';
     }).join('');
-    return '<section class="glass pad"><details' + (r.canApprove ? ' open' : '') + '><summary class="sec-h" style="cursor:pointer"><h3>⏳ Pending approval · ' + r.wait.n + ' invoices · ' + rmf(r.wait.amt) + '</h3><span class="note">Not added to the payment list until Approved</span></summary>' +
+    return '<section class="glass pad" id="approve"><details' + (r.canApprove ? ' open' : '') + '><summary class="sec-h" style="cursor:pointer"><h3>Step 1 · Pending approval · ' + r.wait.n + ' invoices · ' + rmf(r.wait.amt) + '</h3><span class="note">Not added to the payment list until Approved</span></summary>' +
       '<div class="tw"><table class="t"><thead><tr><th></th><th>Supplier</th><th>Branch</th><th>Invoice no.</th><th>Due date</th><th class="n">Amount</th><th>Status</th><th>File</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
       '<div class="row-btn">' + '<a class="btn" href="' + esc(r.apUrl) + '" target="_blank" rel="noopener">Open AP file</a>' + (r.canApprove ? '<button class="btn pri" data-act="payApprove">Approve selected</button>' : '') + '</div></details></section>';
   }
@@ -1031,6 +1055,64 @@
     if (r.hr) { (r.sambilan || []).forEach(function (p) { rows.push(['Part-time · ' + p.name, CAWN[p.caw] || p.caw, p.rows.map(function (x) { return x.mon; }).join(', '), '', '', r2(p.amt), p.hold ? 'ON HOLD — do not pay' : p.final ? 'Payable' : 'Not final yet', '']); }); (r.bday || []).forEach(function (b) { rows.push(['Birthday gift · ' + b.name, CAWN[b.caw] || b.caw, 'Birthday ' + b.bd, '', ymdS(b.pay), 100, 'Not yet paid', '']); }); }
     rows.push([], ['', '', '', '', 'TOTAL TO PAY', r2(r.sum.due - r.sum.paid)]);
     dlXlsx('Payments ' + r.day + ' ' + ymdS(r.ymd).replace(/\//g, ''), [{ n: 'Payment list', rows: rows, w: [30, 14, 20, 12, 18, 12, 20, 18] }]);
+  };
+
+  /* ======================= Reconciliation (weekly task page) ======================= */
+  var RK = { match: ['g', 'Matched'], explained: ['g', 'Explained'], short: ['r', 'Short · needs reason'], over: ['y', 'Over · needs reason'], wait: ['w', 'Waiting for bank'] };
+  var REASONS = ['Weekend card settlement — timing only, lands next working day', 'Bank statement for this date not downloaded yet', 'QR paid into another branch / HQ account', 'Sale not keyed correctly in FeedMe (POS error)', 'Cash not yet banked in', 'Refund / void after closing'];
+  function renderRecon() {
+    var c = kept('recon'); if (c && !S.recon) S.recon = c;
+    if (S.recon) reconView(S.recon);
+    rpc('fxRecon', [S.token]).then(function (r) { var ch = JSON.stringify(r) !== JSON.stringify(S.recon); S.recon = r; keep('recon', r); if (ch && S.page === 'recon') reconView(r); }).catch(function (e) { if (!S.recon) fail(e); });
+  }
+  function rd(y) { return y ? y.slice(8, 10) + '/' + y.slice(5, 7) : '—'; }
+  function rmx(n) { return n === null || n === undefined ? '—' : (n < 0 ? '−' : '') + 'RM' + fnum(Math.abs(n), 2); }
+  function reconView(r) {
+    var need = r.days.filter(function (x) { return x.kind === 'short' || x.kind === 'over'; }), wait = r.days.filter(function (x) { return x.kind === 'wait'; });
+    var lagBad = r.bankLag !== null && r.bankLag > 8, yday = (function () { var d = new Date(r.today + 'T00:00:00'); d.setDate(d.getDate() - 1); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); })();
+    var flow = '<section class="payflow">' +
+      stepBox(1, 'Download statements', wait.length ? 'Maybank2u Biz · ' + rd(r.waitFrom || r.bankAsOf) + ' → ' + rd(yday) : 'Bank data is up to date', wait.length ? 'todo' : 'ok', '') +
+      stepBox(2, 'Paste into "Bank Maybank"', wait.length ? wait.length + ' day' + (wait.length > 1 ? 's' : '') + ' waiting for bank data' : 'Done ✓', wait.length ? 'todo' : 'ok', '') +
+      stepBox(3, 'Explain differences', need.length ? need.length + ' day' + (need.length > 1 ? 's' : '') + ' need a reason' : 'All explained ✓', need.length ? 'todo' : 'ok', need.length ? 'recGo' : '') + '</section>';
+    var bar = '<section class="glass pad paybar"><div><div class="kicker">Bank data up to ' + esc(rd(r.bankAsOf)) + ' · POS data up to ' + esc(rd(r.feedAsOf)) + '</div><div class="paybig' + (lagBad ? ' bad' : '') + '">' + (r.bankLag === null ? 'No bank data' : r.bankLag + ' days behind') + ' <small>' + (lagBad ? 'download the missing statements first' : 'within the weekly cycle') + '</small></div></div>' +
+      '<div class="row-btn" style="margin:0;flex-wrap:wrap"><a class="btn pri" href="' + esc(r.m2u) + '" target="_blank" rel="noopener">' + ic(I.bank) + 'Open Maybank2u Biz ↗</a><a class="btn" href="' + esc(r.urlBank) + '" target="_blank" rel="noopener">Paste in Bank Maybank ↗</a><a class="btn" href="' + esc(r.urlRekon) + '" target="_blank" rel="noopener">Open Rekon Harian ↗</a></div></section>';
+    var tiles = '<section class="cards">' + [
+      ['Matched or explained', r.matchPct === null ? '—' : r.matchPct + '%', r.checked + ' days checked · last 30 days', r.matchPct >= 95 ? 'g' : r.matchPct >= 80 ? 'y' : 'r'],
+      ['Need a reason', String(need.length), rmx(r.openAmt) + ' unexplained difference', need.length ? 'r' : 'g'],
+      ['Waiting for bank', String(wait.length), wait.length ? 'from ' + rd(r.waitFrom) : 'none', wait.length ? 'y' : 'g'],
+      ['Net difference', rmx(r.net), 'received − expected · 30 days', Math.abs(r.net) < 50 ? 'g' : 'y']
+    ].map(function (k) { return '<div class="glass card rk ' + k[3] + '"><small>' + esc(k[0]) + '</small><div class="v">' + esc(k[1]) + '</div><span class="note">' + esc(k[2]) + '</span></div>'; }).join('') + '</section>';
+    var cal = '<section class="glass pad"><div class="sec-h"><h3>Last 30 days</h3><span class="note">Newest first · tap a day for detail</span></div><div class="rcal">' +
+      r.days.slice(0, 30).map(function (x) { return '<button class="rd ' + x.kind + '" data-act="recDay" data-d="' + x.d + '" title="' + esc(RK[x.kind][1]) + '"><b>' + x.d.slice(8, 10) + '</b><small>' + esc(x.day.slice(0, 3)) + '</small></button>'; }).join('') +
+      '</div><div class="rleg">' + Object.keys(RK).map(function (k) { return '<span><i class="rd ' + k + '"></i>' + esc(RK[k][1]) + '</span>'; }).join('') + '</div></section>';
+    var needH = '<section class="glass pad" id="recneed"><div class="sec-h"><div><h3>Step 3 · Explain the differences</h3><div class="note">Each SHORT or OVER day needs one clear sentence. It is saved to Rekon Harian › column P (Catatan finance).</div></div></div>' +
+      (need.length ? need.map(dayCard).join('') : '<div class="empty">✅ No unexplained differences.</div>') + '</section>';
+    var list = '<section class="glass pad"><details><summary class="sec-h" style="cursor:pointer"><h3>All days (' + r.days.length + ')</h3><span class="note">Expected = FeedMe sales · Received = money into Maybank</span></summary><div class="tw"><table class="t"><thead><tr><th>Date</th><th>Status</th><th class="n">Expected</th><th class="n">Received</th><th class="n">Difference</th><th>Note</th></tr></thead><tbody>' +
+      r.days.map(function (x) { return '<tr id="rr-' + x.d + '"><td><b>' + rd(x.d) + '</b> <small class="muted">' + esc(x.day.slice(0, 3)) + '</small></td><td>' + chip(RK[x.kind][1], RK[x.kind][0]) + '</td><td class="n">' + rmx(x.exp) + '</td><td class="n">' + rmx(x.rec) + '</td><td class="n">' + (x.kind === 'wait' ? '—' : rmx(x.diff)) + '</td><td class="small">' + esc(x.note || '') + '</td></tr>'; }).join('') + '</tbody></table></div></details></section>';
+    view(flow + bar + tiles + needH + cal + list + '<div class="note" style="text-align:center">Tolerance RM' + esc(r.tolerance || '5') + ' · card & online settlements may arrive up to ' + esc(r.lagDays || 3) + ' days late before a day is marked SHORT.</div>');
+  }
+  function dayCard(x) {
+    return '<article class="rcard ' + x.kind + '" id="rc-' + x.d + '"><div class="rh"><div><b>' + esc(x.day) + ' ' + rd(x.d) + '</b> ' + chip(RK[x.kind][1], RK[x.kind][0]) + '</div><div class="rdiff">' + rmx(x.diff) + '</div></div>' +
+      '<div class="rch">' + x.ch.map(function (c) { return '<div><small>' + esc(c.n) + '</small><span>Expected ' + rmx(c.exp) + ' · Received ' + rmx(c.rec) + '</span><b class="' + (c.diff < 0 ? 'neg' : c.diff > 0 ? 'pos' : '') + '">' + (c.diff === null ? '—' : rmx(c.diff)) + '</b></div>'; }).join('') + '</div>' +
+      (S.recon.canEdit ? '<div class="rq">' + REASONS.map(function (t, i) { return '<button class="chip" data-act="recPick" data-d="' + x.d + '" data-i="' + i + '">' + esc(t.split(' — ')[0]) + '</button>'; }).join('') + '</div>' +
+        '<div class="rin"><input class="inp" id="rn-' + x.d + '" placeholder="Reason (one sentence) — e.g. Card settlement for Saturday arrived Monday"><button class="btn pri" data-act="recSave" data-d="' + x.d + '">Save reason</button></div>' : '') + '</article>';
+  }
+  A.recGo = function () { var w = $('#recneed'); if (w) w.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+  A.recPick = function (el) { var i = $('#rn-' + el.getAttribute('data-d')); if (i) { i.value = REASONS[+el.getAttribute('data-i')]; i.focus(); } };
+  A.recDay = function (el) {
+    var d = el.getAttribute('data-d'), c = $('#rc-' + d);
+    if (c) { c.scrollIntoView({ behavior: 'smooth', block: 'center' }); c.classList.add('flash'); setTimeout(function () { c.classList.remove('flash'); }, 1400); return; }
+    var x = S.recon.days.filter(function (y) { return y.d === d; })[0]; if (!x) return;
+    modal('<h3>' + esc(x.day) + ' ' + rd(x.d) + '</h3><div style="margin:8px 0 12px">' + chip(RK[x.kind][1], RK[x.kind][0]) + '</div><div class="rch">' + x.ch.map(function (c) { return '<div><small>' + esc(c.n) + '</small><span>Expected ' + rmx(c.exp) + ' · Received ' + rmx(c.rec) + '</span><b>' + (c.diff === null ? '—' : rmx(c.diff)) + '</b></div>'; }).join('') + '</div>' +
+      (x.note ? '<p class="note" style="margin-top:12px">Note: ' + esc(x.note) + '</p>' : '') + '<div class="row-btn"><button class="btn" data-act="closeModal">Close</button></div>');
+  };
+  A.recSave = function (el) {
+    var d = el.getAttribute('data-d'), t = val('rn-' + d); if (t.length < 5) { toast('Write a short reason first', true); return; }
+    el.disabled = true; el.textContent = 'Saving…';
+    rpc('fxReconNote', [S.token, d, t]).then(function () {
+      toast('Reason saved for ' + rd(d));
+      S.recon.days.forEach(function (x) { if (x.d === d) { x.kind = 'explained'; x.note = t; } }); keep('recon', S.recon); reconView(S.recon);
+    }).catch(function (e) { el.disabled = false; el.textContent = 'Save reason'; toast(e.error, true); });
   };
 
   /* ======================= acara & mula ======================= */

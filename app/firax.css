@@ -485,3 +485,37 @@ tr.paid td{color:var(--mut)}
 @media print{.tabbar,.tdays,.pageq{display:none!important}}
 @media (max-width:900px){.top .srch span,.top .srch kbd{display:none}.top .srch{padding:8px 10px}}
 @media (max-width:520px){.top .sub{display:none}.top h1{font-size:18px}}
+/* ---- v2.3 alir kerja: Payments & Reconciliation ---- */
+.payflow{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.pstep{display:flex;align-items:center;gap:12px;padding:14px 16px;text-align:left;color:var(--ink);border:1px solid var(--line);font:inherit}
+button.pstep{cursor:pointer}button.pstep:hover{border-color:rgba(47,224,122,.5)}
+.pstep .pn{width:34px;height:34px;flex:none;border-radius:11px;display:grid;place-items:center;font-weight:800;background:rgba(255,255,255,.06);color:var(--mut)}
+.pstep b{display:block;font-size:14px}.pstep small{color:var(--ink2);font-size:12px}
+.pstep.todo{border-color:rgba(255,181,71,.45)}.pstep.todo .pn{background:linear-gradient(135deg,#ffcf7a,#e09a1f);color:#1b1200}
+.pstep.ok .pn{background:linear-gradient(135deg,#3af08a,#14a34c);color:#03140a}.pstep.ok{opacity:.85}
+.pstep.wait .pn{background:rgba(255,181,71,.18);color:var(--y)}
+.paybar{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+.paybig{font-size:30px;font-weight:800;margin-top:4px;color:var(--g)}.paybig small{font-size:13px;font-weight:600;color:var(--ink2)}.paybig.bad{color:#ff8b8b}
+.payempty{display:flex;gap:16px;align-items:flex-start}.payempty .pe-ic{font-size:34px}.payempty h3{margin:0 0 6px}.payempty p{margin:0 0 12px;line-height:1.55}
+.ptab{position:relative}.ptab.past{border-style:dashed}.pbad{position:absolute;top:10px;right:12px;font-style:normal;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:999px;background:rgba(255,93,93,.18);color:#ff8b8b}
+.copyrow{display:flex;gap:6px;justify-content:flex-end;margin-top:8px}
+tr.duehi td{background:rgba(255,181,71,.06)}
+.cards .rk{border-left:3px solid var(--w)}.cards .rk.g{border-left-color:var(--g)}.cards .rk.y{border-left-color:var(--y)}.cards .rk.r{border-left-color:var(--r)}
+.rcal{display:grid;grid-template-columns:repeat(15,1fr);gap:6px}
+.rd{display:flex;flex-direction:column;align-items:center;padding:6px 0;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--ink);cursor:pointer;font:inherit}
+.rd b{font-size:14px}.rd small{font-size:9.5px;color:var(--mut)}
+.rd.match,.rd.explained{background:rgba(47,224,122,.14);border-color:rgba(47,224,122,.35)}.rd.short{background:rgba(255,93,93,.18);border-color:rgba(255,93,93,.45)}
+.rd.over{background:rgba(255,181,71,.16);border-color:rgba(255,181,71,.45)}.rd.wait{background:rgba(255,255,255,.04);border-style:dashed}
+.rd.explained{background:rgba(47,224,122,.07)}
+.rleg{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:11.5px;color:var(--mut)}.rleg span{display:flex;align-items:center;gap:6px}.rleg i.rd{width:14px;height:14px;padding:0;border-radius:4px;display:inline-block}
+.rcard{border:1px solid var(--line);border-left:3px solid var(--r);border-radius:14px;padding:14px;margin-top:10px;background:rgba(255,255,255,.02);transition:box-shadow .3s}
+.rcard.over{border-left-color:var(--y)}.rcard.flash{box-shadow:0 0 0 3px rgba(47,224,122,.4)}
+.rcard .rh{display:flex;justify-content:space-between;align-items:center;gap:10px}.rdiff{font-size:20px;font-weight:800}
+.rch{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin:10px 0}
+.rch div{padding:8px 10px;border-radius:10px;background:rgba(0,0,0,.2);display:flex;flex-direction:column;gap:2px}.rch small{color:var(--mut);font-size:11px}.rch span{font-size:11.5px;color:var(--ink2)}
+.rch b.neg{color:#ff8b8b}.rch b.pos{color:var(--y)}
+.rq{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}.rq .chip{cursor:pointer}.rq .chip:hover{border-color:rgba(47,224,122,.5);color:var(--g)}
+.rin{display:flex;gap:8px}.rin .inp{flex:1;padding:10px 12px}
+td.small{font-size:11.5px;color:var(--ink2);max-width:360px}
+@media (max-width:900px){.payflow{grid-template-columns:1fr}.rcal{grid-template-columns:repeat(8,1fr)}.rin{flex-direction:column}.paybig{font-size:24px}}
+@media print{.payflow,.rq,.rin{display:none!important}}
