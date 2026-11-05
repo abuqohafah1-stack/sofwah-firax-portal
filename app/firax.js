@@ -307,7 +307,7 @@
     home: { t: 'Overview', i: 'home', sub: "Sofwah's finances in 30 seconds", q: 'Are our finances healthy today?' },
     routine: { t: 'My Tasks', i: 'routine', sub: 'Daily, weekly & monthly checklists · step by step', q: 'What do I need to do today?' , task: 1 },
     actions: { t: 'Alerts', i: 'actions', sub: '🔴 issues to resolve · who, when, how', q: "What's wrong and who's handling it?" },
-    pay: { t: 'Payments', i: 'bank', sub: 'Sunday & Wednesday: suppliers · Tuesday: staff & HR · approved only', q: 'Who needs to be paid today?' , task: 1 },
+    pay: { t: 'Payments', i: 'bank', sub: 'Pay dates set automatically from supplier terms · Sun & Wed suppliers · Tue staff', q: 'Who needs to be paid today?' , task: 1 },
     soa: { t: 'Suppliers', i: 'bill', sub: 'Statement of account per supplier · balance owed, AP aging, purchases & pricing', q: 'How much do we owe and buy from this supplier?' , task: 1 },
     cash: { t: 'Cash', i: 'cash', sub: 'Bank balances, cash flow and cash runway', q: 'Do we have enough cash?' },
     recon: { t: 'Reconciliation', i: 'recon', sub: 'Weekly: bank statement → match POS sales → explain differences', task: 1 },
@@ -817,34 +817,55 @@
   function link(u, t) { return /^https?:\/\//.test(u || '') ? '<a href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(t) + '</a>' : '<span class="muted">' + esc(u ? 'WhatsApp' : '—') + '</span>'; }
   function payView(r) {
     var tabs = '<section class="paytabs">' + r.runs.map(function (d) {
-      var badge = d.past && d.left ? '<em class="pbad">' + d.left + ' unpaid</em>' : '';
-      return '<button class="glass ptab' + (d.ymd === r.ymd ? ' on' : '') + (d.past ? ' past' : '') + '" data-act="payD" data-d="' + d.ymd + '"><small>' + (d.today ? 'TODAY · ' : d.past ? 'LAST RUN · ' : 'NEXT · ') + esc(d.dmy) + '</small><b>' + esc(d.day) + '</b><span>' + (d.hr ? 'Staff & HR' : 'Suppliers') + '</span>' + badge + '</button>';
+      return '<button class="glass ptab' + (d.ymd === r.ymd ? ' on' : '') + '" data-act="payD" data-d="' + d.ymd + '"><small>' + (d.today ? 'TODAY · ' : '') + esc(d.dmy) + '</small><b>' + esc(d.day) + '</b><span>' + (d.n ? 'RM' + fnum(d.tot, 0) + ' · ' + d.n + (d.hr ? ' to pay' : ' supplier' + (d.n > 1 ? 's' : '')) : 'Nothing to pay') + '</span></button>';
     }).join('') + '</section>';
     var s = r.sum, left = s.n - s.nPaid, toPay = s.due - s.paid;
-    var dueWait = r.wait.list.filter(function (x) { var d = String(x.due || '').split('/'); return d.length === 3 && d[2] + '-' + d[1] + '-' + d[0] <= r.ymd; });
-    var st1 = r.wait.n ? (r.canApprove ? 'todo' : 'wait') : 'ok', st2 = left ? 'todo' : s.n ? 'ok' : 'none', st3 = s.nPaid && !left ? 'ok' : s.nPaid ? 'todo' : 'none';
-    var flow = '<section class="payflow">' +
-      stepBox(1, 'Approve', r.wait.n ? r.wait.n + ' invoice' + (r.wait.n > 1 ? 's' : '') + ' waiting · ' + rmf(r.wait.amt) : 'Nothing waiting', st1, r.wait.n ? 'payGoApprove' : '') +
-      stepBox(2, 'Pay in Maybank2u Biz', left ? left + ' payee' + (left > 1 ? 's' : '') + ' · ' + rmf(toPay) : s.n ? 'All paid ✓' : 'Nothing approved for this run', st2, '') +
-      stepBox(3, 'Upload slips', s.n ? s.nPaid + ' of ' + s.n + ' done' : '—', st3, '') + '</section>';
-    var bar = '<section class="glass pad paybar"><div><div class="kicker">' + esc(r.day) + ' ' + esc(ymdS(r.ymd)) + (r.hr ? ' · Staff & HR run' : ' · Supplier run') + '</div><div class="paybig">' + (left ? rmf(toPay) + ' <small>to pay · ' + left + ' payee' + (left > 1 ? 's' : '') + '</small>' : s.n ? '✅ All paid' : 'Nothing to pay yet') + '</div></div>' +
-      '<div class="row-btn" style="margin:0;flex-wrap:wrap">' + (r.m2u ? '<a class="btn pri" href="' + esc(r.m2u) + '" target="_blank" rel="noopener">' + ic(I.bank) + 'Open Maybank2u Biz ↗</a>' : '') +
-      (r.canEdit && s.n ? '<button class="btn" data-act="payFolder">' + ic(I.books) + 'Invoices folder</button><button class="btn" data-act="payXls">⬇ Payment list</button>' : '') + '</div></section>';
-    var body = '';
-    if (!r.groups.length && !(r.hr && (r.sambilan.length || r.bday.length))) {
-      body = '<section class="glass pad payempty"><div class="pe-ic">' + (r.wait.n ? '⏳' : '✅') + '</div><div><h3>' + (r.wait.n ? 'No invoice is approved for this run yet' : 'Nothing scheduled for this ' + esc(r.day)) + '</h3><p class="note">' +
-        (r.wait.n ? 'Only <b>Approved</b> invoices appear here. ' + (dueWait.length ? '<b>' + dueWait.length + '</b> waiting invoice' + (dueWait.length > 1 ? 's are' : ' is') + ' already due by this run (' + rmf(dueWait.reduce(function (a, x) { return a + x.amt; }, 0)) + '). ' : '') + (r.canApprove ? 'Approve them below (step 1) and they move into this list immediately.' : 'Ask the Finance Manager to approve them in FIRAX › Payments.') : 'All invoices are paid or scheduled for a later run.') + '</p>' +
-        (r.wait.n && r.canApprove ? '<button class="btn pri" data-act="payGoApprove">Go to step 1 · Approve ↑</button>' : '') + '</div></section>';
-    }
-    body += r.groups.map(function (g, i) { return supCard(r, g, i); }).join('');
-    if (r.hr) body += sambilanCard(r) + bdayCard(r);
-    var appr = r.canApprove && r.wait.n;
-    view(tabs + flow + (appr ? waitCard(r, dueWait) : '') + bar + body + (appr ? '' : waitCard(r, dueWait)) +
-      '<div class="note" style="text-align:center">FIRAX never makes payments and never stores bank account numbers. Pay in Maybank2u Biz using your saved favourites; FIRAX prepares the list, files slips and emails suppliers.</div>');
+    var hrRows = r.hr ? (r.sambilan || []).filter(function (p) { return !p.hold; }).length + (r.bday && r.bday.length ? 1 : 0) : 0;
+    var head = '<section class="glass pad paybar"><div><div class="kicker">' + esc(r.day) + ' ' + esc(ymdS(r.ymd)) + ' · ' + (r.hr ? 'staff & HR payments' : 'supplier payments') + '</div>' +
+      '<div class="paybig">' + (left || hrRows ? rmf(toPay) + ' <small>to pay · ' + left + ' ' + (r.hr ? 'claim' : 'supplier') + (left === 1 ? '' : 's') + '</small>' : s.n ? '✅ All paid' : 'Nothing to pay') + '</div>' +
+      (s.n ? '<div class="paylegend"><span class="lg g">Ready ' + rmf(s.ready) + '</span>' + (s.unappr ? '<span class="lg y">Needs approval ' + rmf(s.unappr) + '</span>' : '') + (s.paid ? '<span class="lg p">Paid ' + rmf(s.paid) + '</span>' : '') + '</div>' : '') + '</div>' +
+      '<div class="row-btn" style="margin:0;flex-wrap:wrap">' + (r.m2u ? '<a class="btn pri" href="' + esc(r.m2u) + '" target="_blank" rel="noopener">' + ic(I.bank) + 'Maybank2u Biz ↗</a>' : '') + (s.n ? '<button class="btn" data-act="payXls">⬇ Excel</button>' : '') + '</div></section>';
+    var rows = r.groups.map(function (g, i) { return supRow(r, g, i); }).join('');
+    if (r.hr) rows += hrRowsHtml(r);
+    var table = rows ? '<section class="glass pad"><div class="tw"><table class="t paysum"><thead><tr><th>' + (r.hr ? 'Payee' : 'Supplier') + '</th><th class="n">Inv.</th><th class="n">Amount</th><th>Status</th><th class="n"></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      '<div class="note" style="margin-top:10px">Pay date is set automatically from each supplier\'s credit terms and pay day (latest pay day before the due date; overdue invoices go to the next pay day). Tap a row to see its invoices.</div></section>'
+      : '<section class="glass pad"><div class="empty">✅ Nothing is scheduled for ' + esc(r.day) + ' ' + esc(ymdS(r.ymd)) + '.</div></section>';
+    view(tabs + head + table + '<div class="note" style="text-align:center">FIRAX never makes payments or stores bank account numbers — pay in Maybank2u Biz using saved favourites.</div>');
   }
-  function stepBox(n, t, sub, st, act) {
-    return '<' + (act ? 'button data-act="' + act + '"' : 'div') + ' class="glass pstep ' + st + '"><span class="pn">' + (st === 'ok' ? '✓' : n) + '</span><div><b>' + esc(t) + '</b><small>' + esc(sub) + '</small></div></' + (act ? 'button' : 'div') + '>';
+  function stBadge(g) {
+    if (g.paid >= g.total - 0.004) return chip('✅ Paid', 'g');
+    var nU = g.items.filter(function (x) { return x.st === 'Baru' || x.st === 'Disemak'; }).length;
+    if (nU === g.items.length) return chip('Needs approval', 'y');
+    if (nU) return chip(nU + ' need approval', 'y');
+    return chip('Ready to pay', 'g');
   }
+  function supRow(r, g, i) {
+    var done = g.paid >= g.total - 0.004, unap = g.items.filter(function (x) { return x.st === 'Baru' || x.st === 'Disemak'; }), ready = g.items.filter(function (x) { return x.st === 'Diluluskan'; });
+    var late = g.items.some(function (x) { return x.late && x.st !== 'Dibayar'; });
+    var act = done ? (g.items[0].slip ? link(g.items[0].slip, 'Slip') : '') :
+      (unap.length && r.canApprove ? '<button class="btn sm" data-act="payApproveG" data-g="' + i + '">Approve</button>' : '') +
+      (ready.length && r.canEdit ? '<button class="btn sm" data-act="payCopy" data-t="' + g.ready.toFixed(2) + '" title="Copy amount">Copy RM</button><button class="btn sm pri" data-act="payMark" data-k="sup" data-g="' + i + '">Mark paid</button>' : '');
+    var det = '<tr class="pdet" id="pd-' + i + '" hidden><td colspan="5"><div class="pdl">' + g.items.map(function (x) {
+      return '<div class="pdi' + (x.st === 'Dibayar' ? ' paid' : '') + '"><span>' + esc(CAWN[x.caw] || x.caw) + '</span><b>' + show(x.inv) + '</b><span>due ' + show(x.due) + (x.late && x.st !== 'Dibayar' ? ' <em class="r">overdue</em>' : '') + '</span><span class="n">' + rmf(x.amt) + '</span><span>' + chip(en(x.st), x.st === 'Diluluskan' || x.st === 'Dibayar' ? 'g' : 'y') + '</span><span>' + link(x.file, 'Invoice') + '</span></div>';
+    }).join('') + (r.canEdit ? '<div class="pdm">Reference to type in M2U: <b>' + esc(payRef(g)) + '</b> <button class="btn sm" data-act="payCopy" data-t="' + esc(payRef(g)) + '">Copy</button></div>' : '') + '</div></td></tr>';
+    return '<tr class="prow' + (done ? ' done' : '') + '" data-act="payTog" data-g="' + i + '"><td><b>' + esc(g.label) + '</b>' + (late ? ' <span class="chip r">Overdue</span>' : '') + '<div class="muted" style="font-size:11px">' + esc(g.tujuan || '') + (g.email ? ' · ✉ email reply' : '') + '</div></td><td class="n">' + g.items.length + '</td><td class="n"><b>' + rmf(done ? g.total : g.total - g.paid) + '</b></td><td>' + stBadge(g) + '</td><td class="n pact">' + act + '</td></tr>' + det;
+  }
+  function hrRowsHtml(r) {
+    var out = (r.sambilan || []).map(function (p, i) {
+      var st = p.hold ? chip('On hold (HR)', 'r') : !p.final ? chip('Final from the 4th', 'w') : chip('Ready to pay', 'g');
+      return '<tr class="prow"><td><b>' + esc(p.name) + '</b><div class="muted" style="font-size:11px">Part-time · ' + esc(CAWN[p.caw] || p.caw) + ' · ' + p.rows.map(function (x) { return esc(x.mon); }).join(', ') + '</div></td><td class="n">' + p.rows.length + '</td><td class="n"><b>' + rmf(p.amt) + '</b></td><td>' + st + '</td><td class="n pact">' + (!p.hold && p.final && r.canEdit ? '<button class="btn sm" data-act="payCopy" data-t="' + p.amt.toFixed(2) + '">Copy RM</button><button class="btn sm pri" data-act="payMark" data-k="sambilan" data-g="' + i + '">Mark paid</button>' : '') + '</td></tr>';
+    }).join('');
+    if (r.bday && r.bday.length) out += '<tr class="prow" data-act="payTog" data-g="bd"><td><b>🎁 Birthday gifts</b><div class="muted" style="font-size:11px">' + r.bday.map(function (b) { return esc(b.name.split(' ')[0]); }).join(', ') + '</div></td><td class="n">' + r.bday.length + '</td><td class="n"><b>' + rmf(r.bday.length * 100) + '</b></td><td>' + chip('Ready to pay', 'g') + '</td><td class="n pact">' + (r.canEdit ? '<button class="btn sm pri" data-act="payMark" data-k="hadiah">Mark paid</button>' : '') + '</td></tr>' +
+      '<tr class="pdet" id="pd-bd" hidden><td colspan="5"><div class="pdl">' + r.bday.map(function (b) { return '<div class="pdi"><span>' + esc(CAWN[b.caw] || b.caw) + '</span><b>' + esc(b.name) + '</b><span>🎂 ' + esc(b.bd) + (b.late ? ' <em class="r">late</em>' : '') + '</span><span class="n">RM100.00</span></div>'; }).join('') + '</div></td></tr>';
+    return out;
+  }
+  A.payTog = function (el, e) { if (e && e.target.closest('button,a')) return; var d = $('#pd-' + el.getAttribute('data-g')); if (d) { d.hidden = !d.hidden; el.classList.toggle('open', !d.hidden); } };
+  A.payApproveG = function (el) {
+    var g = S.pay.groups[+el.getAttribute('data-g')], rows = g.items.filter(function (x) { return x.st === 'Baru' || x.st === 'Disemak'; }).map(function (x) { return x.row; });
+    el.disabled = true; el.textContent = 'Approving…';
+    rpc('fxPayApprove', [S.token, rows]).then(function (x) { toast('✅ ' + g.label + ': ' + x.approved + ' invoice' + (x.approved > 1 ? 's' : '') + ' approved'); renderPay(S.pay.ymd); }).catch(function (e) { el.disabled = false; el.textContent = 'Approve'; toast(e.error, true); });
+  };
+  function ymdS(y) { var p = String(y).split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
   /** Rujukan pendek untuk M2U (had 20 aksara): SOFWAH + 4 digit akhir invois. */
   function payRef(g) { var r = 'SOFWAH ' + g.items.filter(function (x) { return x.st !== 'Dibayar'; }).map(function (x) { return String(x.inv || '').replace(/\D/g, '').slice(-4); }).filter(String).join(' '); return r.slice(0, 20).trim(); }
   function copyTxt(t) {
@@ -854,54 +875,6 @@
     function fb() { var a = document.createElement('textarea'); a.value = t; a.style.position = 'fixed'; a.style.opacity = '0'; document.body.appendChild(a); a.select(); try { document.execCommand('copy'); ok(); } catch (e) { toast('Copy not allowed here — select the text manually', true); } a.remove(); }
   }
   A.payCopy = function (el) { copyTxt(el.getAttribute('data-t')); };
-  A.payGoApprove = function () { var w = $('#approve'); if (w) { var d = w.querySelector('details'); if (d) d.open = true; w.scrollIntoView({ behavior: 'smooth', block: 'start' }); } };
-  function ymdS(y) { var p = String(y).split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
-  function supCard(r, g, i) {
-    var done = g.paid >= g.total - 0.004, part = g.paid > 0 && !done, open = g.items.filter(function (x) { return x.st !== 'Dibayar'; });
-    var mailSt = g.items.map(function (x) { return x.mail; }).filter(String)[0] || '';
-    var head = '<div class="sec-h"><div><h3>' + (done ? '✅ ' : '') + esc(g.label) + '</h3><div class="meta">' +
-      chip(g.staff ? 'Staff claims' : (en(g.hari) || 'Payment day not set'), g.hari ? '' : 'y') +
-      (g.email ? '<span class="chip">✉ ' + esc(g.email) + '</span>' : '<span class="chip w">No email · WhatsApp</span>') +
-      (g.items.some(function (x) { return x.late && x.st !== 'Dibayar'; }) ? '<span class="chip r">Overdue from previous run</span>' : '') +
-      (mailSt ? '<span class="chip ' + (/Dihantar/.test(mailSt) ? 'g' : /Menunggu/.test(mailSt) ? 'y' : 'w') + '">' + esc(en(mailSt)) + '</span>' : '') +
-      (g.folder ? '<a class="chip" href="' + esc(g.folder) + '" target="_blank" rel="noopener">📁 Supplier folder</a>' : '') + '</div></div>' +
-      '<div class="paytot"><small>' + (done ? 'Paid' : part ? 'Balance' : 'Amount to pay') + '</small><b>' + rmf(done ? g.total : g.total - g.paid) + '</b>' +
-      (!done && r.canEdit ? '<div class="copyrow"><button class="btn sm" data-act="payCopy" data-t="' + (g.total - g.paid).toFixed(2) + '">Copy amount</button><button class="btn sm" data-act="payCopy" data-t="' + esc(payRef(g)) + '">Copy reference</button></div>' : '') + '</div></div>';
-    var rows = g.items.map(function (x) {
-      return '<tr class="' + (x.st === 'Dibayar' ? 'paid' : '') + '"><td>' + esc(CAWN[x.caw] || x.caw) + '</td><td><b>' + show(x.inv) + '</b><div class="muted" style="font-size:11px">' + esc(x.id) + '</div></td><td>' + show(x.tinv) + '</td><td>' + show(x.due) + '</td><td class="n">' + rmf(x.amt) + '</td><td>' + link(x.file, x.std ? 'Invoice ✓' : 'Invoice') + '</td><td>' +
-        (x.st === 'Dibayar' ? chip('✅ Paid ' + (x.paidOn || ''), 'g') + (x.slip ? ' ' + link(x.slip, 'Slip') : '') : r.canEdit ? '<label class="ck"><input type="checkbox" class="pk" data-g="' + i + '" value="' + x.row + '" checked> pay</label>' : chip('Not yet', 'y')) + '</td></tr>';
-    }).join('');
-    return '<section class="glass pad paycard' + (done ? ' done' : '') + '">' + head + '<div class="tw"><table class="t"><thead><tr><th>Branch</th><th>Invoice no.</th><th>Invoice date</th><th>Due date</th><th class="n">Amount</th><th>File</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
-      (open.length && r.canEdit ? '<div class="row-btn"><button class="btn pri" data-act="payMark" data-k="sup" data-g="' + i + '">Mark as paid + upload slip</button></div>' : '') + '</section>';
-  }
-  function sambilanCard(r) {
-    if (!r.sambilan.length) return '<section class="glass pad"><div class="sec-h"><h3>Part-time & casual wages</h3></div><div class="empty">No outstanding part-time payments.</div></section>';
-    var rows = r.sambilan.map(function (p, i) {
-      var ok = !p.hold && p.final;
-      return '<tr><td>' + esc(CAWN[p.caw] || p.caw) + '</td><td><b>' + esc(p.name) + '</b><div class="muted" style="font-size:11px">' + esc(p.jenis) + ' · ' + p.rows.map(function (x) { return esc(x.mon) + ' (' + esc(x.qty) + ')'; }).join(', ') + '</div></td><td class="n">' + rmf(p.amt) + '</td><td>' +
-        (p.hold ? chip('🔴 On hold (HR) — do not pay') : !p.final ? chip('⏳ Not final yet (4th)') : r.canEdit ? '<button class="btn sm" data-act="payMark" data-k="sambilan" data-g="' + i + '">Mark as paid</button>' : chip('Not yet', 'y')) + '</td></tr>';
-    }).join('');
-    var tot = r.sambilan.filter(function (p) { return !p.hold && p.final; }).reduce(function (a, p) { return a + p.amt; }, 0);
-    return '<section class="glass pad"><div class="sec-h"><div><h3>Part-time & casual wages</h3><div class="note">From WAR HR › Bayaran Sambilan. For bank & account no., see the HR sheet (not shown in FIRAX).</div></div><div class="paytot"><small>Payable</small><b>' + rmf(tot) + '</b></div></div>' +
-      '<div class="tw"><table class="t"><thead><tr><th>Branch</th><th>Name</th><th class="n">Amount</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div></section>';
-  }
-  function bdayCard(r) {
-    var rows = r.bday.map(function (b, i) {
-      return '<tr><td>' + esc(CAWN[b.caw] || b.caw) + '</td><td><b>' + esc(b.name) + '</b><div class="muted" style="font-size:11px">' + esc(b.id) + '</div></td><td>🎂 ' + esc(b.bd) + '</td><td>' + (b.late ? chip('🔴 Late · Tuesday ' + ymdS(b.pay)) : chip('🟡 This Tuesday')) + '</td><td class="n">RM100.00</td><td>' + (r.canEdit ? '<label class="ck"><input type="checkbox" class="pkb" value="' + b.row + '" checked> pay</label>' : '') + '</td></tr>';
-    }).join('');
-    return '<section class="glass pad"><div class="sec-h"><div><h3>🎁 Staff birthday gift · RM100</h3><div class="note">Paid on the first Tuesday after the birthday. List from AP › Hari Jadi Staf (QuickHR; IC not stored).</div></div><div class="paytot"><small>' + r.bday.length + ' staff</small><b>' + rmf(r.bday.length * 100) + '</b></div></div>' +
-      (r.bday.length ? '<div class="tw"><table class="t"><thead><tr><th>Branch</th><th>Name</th><th>Birthday</th><th>Schedule</th><th class="n">Gift</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' + (r.canEdit ? '<div class="row-btn"><button class="btn pri" data-act="payMark" data-k="hadiah">Mark gifts as paid</button></div>' : '') : '<div class="empty">No birthday gifts to pay this week.</div>') + '</section>';
-  }
-  function waitCard(r, dueWait) {
-    if (!r.wait.n) return ''; var dueRows = (dueWait || []).map(function (x) { return x.row; });
-    var rows = r.wait.list.map(function (x) {
-      var due = dueRows.indexOf(x.row) >= 0;
-      return '<tr class="' + (due ? 'duehi' : '') + '"><td>' + (r.canApprove ? '<input type="checkbox" class="pka" value="' + x.row + '"' + (due ? ' checked' : '') + '>' : '') + '</td><td><b>' + esc(x.sup) + '</b>' + (due ? ' <span class="chip y">Due by this run</span>' : '') + '<div class="muted" style="font-size:11px">' + esc(x.id) + (x.note ? ' · ' + esc(String(x.note).slice(0, 90)) : '') + '</div></td><td>' + esc(CAWN[x.caw] || x.caw) + '</td><td>' + show(x.inv) + '</td><td>' + show(x.due) + '</td><td class="n">' + rmf(x.amt) + '</td><td>' + chip(en(x.st), x.st === 'Disemak' ? 'y' : 'w') + '</td><td>' + link(x.file, 'Invoice') + '</td></tr>';
-    }).join('');
-    return '<section class="glass pad" id="approve"><details' + (r.canApprove ? ' open' : '') + '><summary class="sec-h" style="cursor:pointer"><h3>Step 1 · Pending approval · ' + r.wait.n + ' invoices · ' + rmf(r.wait.amt) + '</h3><span class="note">Not added to the payment list until Approved</span></summary>' +
-      '<div class="tw"><table class="t"><thead><tr><th></th><th>Supplier</th><th>Branch</th><th>Invoice no.</th><th>Due date</th><th class="n">Amount</th><th>Status</th><th>File</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
-      '<div class="row-btn">' + '<a class="btn" href="' + esc(r.apUrl) + '" target="_blank" rel="noopener">Open AP file</a>' + (r.canApprove ? '<button class="btn pri" data-act="payApprove">Approve selected</button>' : '') + '</div></details></section>';
-  }
   A.payD = function (el) { S.payD = el.getAttribute('data-d'); view('<div class="skel" style="height:300px"></div>'); renderPay(S.payD); };
   A.payFolder = function (el) {
     el.disabled = true; toast('Preparing payment folder…');
@@ -919,9 +892,9 @@
   };
   A.payMark = function (el) {
     var k = el.getAttribute('data-k'), gi = +el.getAttribute('data-g'), r = S.pay, rows, title, total, needSlip = k === 'sup', key = '';
-    if (k === 'sup') { var g = r.groups[gi]; key = g.key; rows = Array.prototype.map.call(document.querySelectorAll('.pk[data-g="' + gi + '"]:checked'), function (c) { return +c.value; }); total = g.items.filter(function (x) { return rows.indexOf(x.row) >= 0; }).reduce(function (a, x) { return a + x.amt; }, 0); title = g.label; }
+    if (k === 'sup') { var g = r.groups[gi]; key = g.key; rows = g.items.filter(function (x) { return x.st === 'Diluluskan'; }).map(function (x) { return x.row; }); total = g.items.filter(function (x) { return rows.indexOf(x.row) >= 0; }).reduce(function (a, x) { return a + x.amt; }, 0); title = g.label; }
     else if (k === 'sambilan') { var p = r.sambilan[gi]; key = p.name; rows = p.rows.map(function (x) { return x.row; }); total = p.amt; title = 'Part-time · ' + p.name; }
-    else { rows = Array.prototype.map.call(document.querySelectorAll('.pkb:checked'), function (c) { return +c.value; }); total = rows.length * 100; title = 'Birthday gift · ' + rows.length + ' staff'; }
+    else { rows = (r.bday || []).map(function (b) { return b.row; }); total = rows.length * 100; title = 'Birthday gift · ' + rows.length + ' staff'; }
     if (!rows.length) { toast('Select at least one row', true); return; }
     S.payM = { kind: k, key: key, rows: rows };
     modal('<h3>Mark as paid</h3><p class="note" style="margin:6px 0 14px">' + esc(title) + ' · ' + rows.length + ' rows · <b style="color:#2fe07a">' + rmf(total) + '</b><br>Make sure the M2U amount matches this total.</p>' +
@@ -1060,6 +1033,9 @@
   /* ======================= Reconciliation (weekly task page) ======================= */
   var RK = { match: ['g', 'Matched'], explained: ['g', 'Explained'], short: ['r', 'Short · needs reason'], over: ['y', 'Over · needs reason'], wait: ['w', 'Waiting for bank'] };
   var REASONS = ['Weekend card settlement — timing only, lands next working day', 'Bank statement for this date not downloaded yet', 'QR paid into another branch / HQ account', 'Sale not keyed correctly in FeedMe (POS error)', 'Cash not yet banked in', 'Refund / void after closing'];
+  function stepBox(n, t, sub, st, act) {
+    return '<' + (act ? 'button data-act="' + act + '"' : 'div') + ' class="glass pstep ' + st + '"><span class="pn">' + (st === 'ok' ? '✓' : n) + '</span><div><b>' + esc(t) + '</b><small>' + esc(sub) + '</small></div></' + (act ? 'button' : 'div') + '>';
+  }
   function renderRecon() {
     var c = kept('recon'); if (c && !S.recon) S.recon = c;
     if (S.recon) reconView(S.recon);
@@ -1117,6 +1093,7 @@
 
   /* ======================= acara & mula ======================= */
   document.addEventListener('click', function (e) {
+    if (e.target.closest('a[href]') && !e.target.closest('a[href]').hasAttribute('data-act')) return;
     var el = e.target.closest('[data-act]'); if (!el) return;
     var a = el.getAttribute('data-act'); if (!A[a]) return;
     if (el.tagName === 'A' && el.getAttribute('href')) return;
