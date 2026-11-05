@@ -1030,12 +1030,12 @@
     dlXlsx('Payments ' + r.day + ' ' + ymdS(r.ymd).replace(/\//g, ''), [{ n: 'Payment list', rows: rows, w: [30, 14, 20, 12, 18, 12, 20, 18] }]);
   };
 
-  /* ======================= Reconciliation (weekly task page) ======================= */
-  var RK = { match: ['g', 'Matched'], explained: ['g', 'Explained'], short: ['r', 'Short · needs reason'], over: ['y', 'Over · needs reason'], wait: ['w', 'Waiting for bank'] };
+  /* ======================= Reconciliation (v2.5 — check & balance first) =======================
+   * Layout: verdict → heat map (done / not done) → check & balance for the chosen day → 30-day totals.
+   * Data-completion work (download / paste statements, reasons owed) sits in a side panel, not in the way. */
+  var RK = { match: ['g', 'Balanced'], explained: ['e', 'Explained'], short: ['r', 'Short'], over: ['y', 'Over'], wait: ['w', 'Waiting for bank'] };
   var REASONS = ['Weekend card settlement — timing only, lands next working day', 'Bank statement for this date not downloaded yet', 'QR paid into another branch / HQ account', 'Sale not keyed correctly in FeedMe (POS error)', 'Cash not yet banked in', 'Refund / void after closing'];
-  function stepBox(n, t, sub, st, act) {
-    return '<' + (act ? 'button data-act="' + act + '"' : 'div') + ' class="glass pstep ' + st + '"><span class="pn">' + (st === 'ok' ? '✓' : n) + '</span><div><b>' + esc(t) + '</b><small>' + esc(sub) + '</small></div></' + (act ? 'button' : 'div') + '>';
-  }
+  var DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   function renderRecon() {
     var c = kept('recon'); if (c && !S.recon) S.recon = c;
     if (S.recon) reconView(S.recon);
@@ -1043,51 +1043,116 @@
   }
   function rd(y) { return y ? y.slice(8, 10) + '/' + y.slice(5, 7) : '—'; }
   function rmx(n) { return n === null || n === undefined ? '—' : (n < 0 ? '−' : '') + 'RM' + fnum(Math.abs(n), 2); }
-  function reconView(r) {
-    var need = r.days.filter(function (x) { return x.kind === 'short' || x.kind === 'over'; }), wait = r.days.filter(function (x) { return x.kind === 'wait'; });
-    var lagBad = r.bankLag !== null && r.bankLag > 8, yday = (function () { var d = new Date(r.today + 'T00:00:00'); d.setDate(d.getDate() - 1); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); })();
-    var flow = '<section class="payflow">' +
-      stepBox(1, 'Download statements', wait.length ? 'Maybank2u Biz · ' + rd(r.waitFrom || r.bankAsOf) + ' → ' + rd(yday) : 'Bank data is up to date', wait.length ? 'todo' : 'ok', '') +
-      stepBox(2, 'Paste into "Bank Maybank"', wait.length ? wait.length + ' day' + (wait.length > 1 ? 's' : '') + ' waiting for bank data' : 'Done ✓', wait.length ? 'todo' : 'ok', '') +
-      stepBox(3, 'Explain differences', need.length ? need.length + ' day' + (need.length > 1 ? 's' : '') + ' need a reason' : 'All explained ✓', need.length ? 'todo' : 'ok', need.length ? 'recGo' : '') + '</section>';
-    var bar = '<section class="glass pad paybar"><div><div class="kicker">Bank data up to ' + esc(rd(r.bankAsOf)) + ' · POS data up to ' + esc(rd(r.feedAsOf)) + '</div><div class="paybig' + (lagBad ? ' bad' : '') + '">' + (r.bankLag === null ? 'No bank data' : r.bankLag + ' days behind') + ' <small>' + (lagBad ? 'download the missing statements first' : 'within the weekly cycle') + '</small></div></div>' +
-      '<div class="row-btn" style="margin:0;flex-wrap:wrap"><a class="btn pri" href="' + esc(r.m2u) + '" target="_blank" rel="noopener">' + ic(I.bank) + 'Open Maybank2u Biz ↗</a><a class="btn" href="' + esc(r.urlBank) + '" target="_blank" rel="noopener">Paste in Bank Maybank ↗</a><a class="btn" href="' + esc(r.urlRekon) + '" target="_blank" rel="noopener">Open Rekon Harian ↗</a></div></section>';
-    var tiles = '<section class="cards">' + [
-      ['Matched or explained', r.matchPct === null ? '—' : r.matchPct + '%', r.checked + ' days checked · last 30 days', r.matchPct >= 95 ? 'g' : r.matchPct >= 80 ? 'y' : 'r'],
-      ['Need a reason', String(need.length), rmx(r.openAmt) + ' unexplained difference', need.length ? 'r' : 'g'],
-      ['Waiting for bank', String(wait.length), wait.length ? 'from ' + rd(r.waitFrom) : 'none', wait.length ? 'y' : 'g'],
-      ['Net difference', rmx(r.net), 'received − expected · 30 days', Math.abs(r.net) < 50 ? 'g' : 'y']
-    ].map(function (k) { return '<div class="glass card rk ' + k[3] + '"><small>' + esc(k[0]) + '</small><div class="v">' + esc(k[1]) + '</div><span class="note">' + esc(k[2]) + '</span></div>'; }).join('') + '</section>';
-    var cal = '<section class="glass pad"><div class="sec-h"><h3>Last 30 days</h3><span class="note">Newest first · tap a day for detail</span></div><div class="rcal">' +
-      r.days.slice(0, 30).map(function (x) { return '<button class="rd ' + x.kind + '" data-act="recDay" data-d="' + x.d + '" title="' + esc(RK[x.kind][1]) + '"><b>' + x.d.slice(8, 10) + '</b><small>' + esc(x.day.slice(0, 3)) + '</small></button>'; }).join('') +
-      '</div><div class="rleg">' + Object.keys(RK).map(function (k) { return '<span><i class="rd ' + k + '"></i>' + esc(RK[k][1]) + '</span>'; }).join('') + '</div></section>';
-    var needH = '<section class="glass pad" id="recneed"><div class="sec-h"><div><h3>Step 3 · Explain the differences</h3><div class="note">Each SHORT or OVER day needs one clear sentence. It is saved to Rekon Harian › column P (Catatan finance).</div></div></div>' +
-      (need.length ? need.map(dayCard).join('') : '<div class="empty">✅ No unexplained differences.</div>') + '</section>';
-    var list = '<section class="glass pad"><details><summary class="sec-h" style="cursor:pointer"><h3>All days (' + r.days.length + ')</h3><span class="note">Expected = FeedMe sales · Received = money into Maybank</span></summary><div class="tw"><table class="t"><thead><tr><th>Date</th><th>Status</th><th class="n">Expected</th><th class="n">Received</th><th class="n">Difference</th><th>Note</th></tr></thead><tbody>' +
-      r.days.map(function (x) { return '<tr id="rr-' + x.d + '"><td><b>' + rd(x.d) + '</b> <small class="muted">' + esc(x.day.slice(0, 3)) + '</small></td><td>' + chip(RK[x.kind][1], RK[x.kind][0]) + '</td><td class="n">' + rmx(x.exp) + '</td><td class="n">' + rmx(x.rec) + '</td><td class="n">' + (x.kind === 'wait' ? '—' : rmx(x.diff)) + '</td><td class="small">' + esc(x.note || '') + '</td></tr>'; }).join('') + '</tbody></table></div></details></section>';
-    view(flow + bar + tiles + needH + cal + list + '<div class="note" style="text-align:center">Tolerance RM' + esc(r.tolerance || '5') + ' · card & online settlements may arrive up to ' + esc(r.lagDays || 3) + ' days late before a day is marked SHORT.</div>');
+  function rk0(n) { return n === null || n === undefined ? '' : (n < 0 ? '−' : '+') + fnum(Math.abs(n), 0); }
+  function ymdAdd(y, n) { var d = new Date(y + 'T00:00:00'); d.setDate(d.getDate() + n); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function dowOf(y) { return new Date(y + 'T00:00:00').getDay(); }
+  function isNeed(x) { return x.kind === 'short' || x.kind === 'over'; }
+
+  function rmd(n) { return n === null || n === undefined ? '—' : (n > 0.004 ? '+' : '') + rmx(n); }
+  /* Client-side tidy: fill blank differences, and a day with sales but no bank figure is "waiting for bank" (statement missing), not a real difference. */
+  function recNorm(r0) {
+    var r = JSON.parse(JSON.stringify(r0)), sub = function (a, b) { return a === null || b === null || a === undefined || b === undefined ? null : Math.round((a - b) * 100) / 100; };
+    r.days.forEach(function (x) {
+      x.ch.forEach(function (c) { if (c.diff === null || c.diff === undefined) c.diff = sub(c.rec, c.exp); });
+      if (x.diff === null || x.diff === undefined) x.diff = sub(x.rec, x.exp);
+      if (x.kind !== 'wait' && x.rec === null && x.exp !== null) { x.kind = 'wait'; x.miss = true; }
+    });
+    r.openAmt = r.days.filter(isNeed).reduce(function (a, x) { return a + Math.abs(x.diff || 0); }, 0);
+    return r;
   }
-  function dayCard(x) {
-    return '<article class="rcard ' + x.kind + '" id="rc-' + x.d + '"><div class="rh"><div><b>' + esc(x.day) + ' ' + rd(x.d) + '</b> ' + chip(RK[x.kind][1], RK[x.kind][0]) + '</div><div class="rdiff">' + rmx(x.diff) + '</div></div>' +
-      '<div class="rch">' + x.ch.map(function (c) { return '<div><small>' + esc(c.n) + '</small><span>Expected ' + rmx(c.exp) + ' · Received ' + rmx(c.rec) + '</span><b class="' + (c.diff < 0 ? 'neg' : c.diff > 0 ? 'pos' : '') + '">' + (c.diff === null ? '—' : rmx(c.diff)) + '</b></div>'; }).join('') + '</div>' +
-      (S.recon.canEdit ? '<div class="rq">' + REASONS.map(function (t, i) { return '<button class="chip" data-act="recPick" data-d="' + x.d + '" data-i="' + i + '">' + esc(t.split(' — ')[0]) + '</button>'; }).join('') + '</div>' +
-        '<div class="rin"><input class="inp" id="rn-' + x.d + '" placeholder="Reason (one sentence) — e.g. Card settlement for Saturday arrived Monday"><button class="btn pri" data-act="recSave" data-d="' + x.d + '">Save reason</button></div>' : '') + '</article>';
+  function reconView(r0) {
+    var r = recNorm(r0), from = ymdAdd(r.today, -30), last = r.days.filter(function (x) { return x.d >= from; }), byD = {};
+    r.days.forEach(function (x) { byD[x.d] = x; });
+    var cnt = { match: 0, explained: 0, short: 0, over: 0, wait: 0 }; last.forEach(function (x) { cnt[x.kind]++; });
+    var need = r.days.filter(isNeed), wait = r.days.filter(function (x) { return x.kind === 'wait'; });
+    var checked = cnt.match + cnt.explained + cnt.short + cnt.over, done = cnt.match + cnt.explained, tol = parseFloat(String(r.tolerance || '5').replace(/,/g, '')) || 5;
+    if (!S.recSel || !byD[S.recSel]) S.recSel = (need[0] || r.days.filter(function (x) { return x.kind !== 'wait'; })[0] || r.days[0] || {}).d;
+    var todo = (wait.length ? 1 : 0) + (need.length ? 1 : 0);
+
+    /* 1 · Verdict */
+    var seg = ['match', 'explained', 'short', 'over', 'wait'].map(function (k) { return cnt[k] ? '<i class="' + k + '" style="flex:' + cnt[k] + '" title="' + RK[k][1] + ' · ' + cnt[k] + '"></i>' : ''; }).join('');
+    var verdict = '<section class="glass pad rc-hero"><div class="rc-hl"><div class="kicker">Bank vs sales · last 30 days</div>' +
+      '<div class="rc-big' + (need.length ? ' warn' : '') + '">' + done + '<small> of ' + checked + ' days balanced</small></div>' +
+      '<div class="note">' + (need.length ? need.length + ' day' + (need.length > 1 ? 's' : '') + ' still need a reason · ' + rmx(r.openAmt) + ' unexplained' : checked ? 'Every checked day is balanced or explained ✓' : 'No days checked yet') +
+      (wait.length ? ' · ' + wait.length + ' day' + (wait.length > 1 ? 's' : '') + ' waiting for bank data' : '') + '</div></div>' +
+      '<div class="rc-hr"><div class="rc-seg">' + seg + '</div><div class="rc-leg">' +
+      ['match', 'explained', 'short', 'over', 'wait'].map(function (k) { return '<span><i class="rc-k ' + k + '"></i>' + RK[k][1] + ' <b>' + cnt[k] + '</b></span>'; }).join('') + '</div>' +
+      (todo ? '<button class="rc-todo" data-act="recTodo">⚠ ' + todo + ' thing' + (todo > 1 ? 's' : '') + ' to complete</button>' : '') + '</div></section>';
+
+    /* 2 · Heat map (5 weeks, Sun → Sat) */
+    var start = ymdAdd(r.today, -34); start = ymdAdd(start, -dowOf(start));
+    var cells = '';
+    for (var d = start; d <= ymdAdd(r.today, 6 - dowOf(r.today)); d = ymdAdd(d, 1)) {
+      var x = byD[d], fut = d > r.today, k = x ? x.kind : fut ? 'fut' : 'none';
+      var lab = x ? (k === 'match' ? '✓' : k === 'explained' ? '✎' : k === 'wait' ? '…' : rk0(x.diff)) : '';
+      cells += fut ? '<span class="rc-c fut"></span>' :
+        '<button class="rc-c ' + k + (d === S.recSel ? ' sel' : '') + (d === r.today ? ' today' : '') + '"' + (x ? ' data-act="recDay" data-d="' + d + '"' : ' disabled') +
+        ' title="' + esc(DOW[dowOf(d)] + ' ' + rd(d) + ' · ' + (x ? RK[k][1] + (x.diff ? ' ' + rmx(x.diff) : '') : 'No sales / closed')) + '"><b>' + d.slice(8, 10) + '</b><small>' + esc(lab) + '</small></button>';
+    }
+    var heat = '<section class="glass pad"><div class="sec-h"><div><h3>Day by day</h3><div class="note">Green = done · red / amber = needs a reason · grey = waiting for bank. Tap a day to check it.</div></div></div>' +
+      '<div class="rc-heat">' + DOW.map(function (w) { return '<span class="rc-w">' + w + '</span>'; }).join('') + cells + '</div></section>';
+
+    /* 3 · Check & balance for the selected day */
+    var x = byD[S.recSel], chk = '';
+    if (x) {
+      var row = function (n, e, rc, df, strong) {
+        var ok = x.kind === 'wait' ? null : df === null || df === undefined ? null : Math.abs(df) <= tol;
+        return '<tr' + (strong ? ' class="tot"' : '') + '><td>' + esc(n) + '</td><td class="n">' + rmx(e) + '</td><td class="n">' + (x.kind === 'wait' && rc === null ? '<span class="muted">not in yet</span>' : rmx(rc)) + '</td><td class="n ' + (ok === false ? (df < 0 ? 'neg' : 'pos') : '') + '">' + (x.kind === 'wait' ? '—' : rmd(df)) + '</td><td class="ck">' + (ok === null ? '<span class="muted">…</span>' : ok ? '<span class="okk">✓</span>' : '<span class="bad">✗</span>') + '</td></tr>';
+      };
+      var verdictTxt = { match: 'Balanced — money received matches sales.', explained: 'Difference explained.', short: 'Bank received LESS than sales. Give a reason.', over: 'Bank received MORE than sales. Give a reason.', wait: x.miss ? 'Sales recorded but no bank figure — the statement for this day is missing.' : 'Bank statement for this day is not in yet.' }[x.kind];
+      chk = '<section class="glass pad rc-chk ' + x.kind + '" id="recchk"><div class="sec-h"><div><div class="kicker">Check &amp; balance</div><h3>' + DOW[dowOf(x.d)] + ' ' + rd(x.d) + ' ' + chip(RK[x.kind][1], RK[x.kind][0] === 'e' ? 'g' : RK[x.kind][0]) + '</h3></div>' +
+        '<div class="rc-nav"><button class="iconbtn" data-act="recStep" data-n="1" title="Older day">‹</button><button class="iconbtn" data-act="recStep" data-n="-1" title="Newer day">›</button></div></div>' +
+        '<div class="rc-eq"><div><small>Expected</small><b>' + rmx(x.exp) + '</b><span>FeedMe sales (QR + card + online)</span></div><i>−</i>' +
+        '<div><small>Received</small><b>' + (x.kind === 'wait' && x.rec === null ? '—' : rmx(x.rec)) + '</b><span>Money into Maybank</span></div><i>=</i>' +
+        '<div class="res"><small>Difference</small><b>' + (x.kind === 'wait' ? '—' : rmd(x.diff)) + '</b><span>' + esc(verdictTxt) + '</span></div></div>' +
+        '<div class="tw"><table class="t rc-t"><thead><tr><th>Channel</th><th class="n">Expected</th><th class="n">Received</th><th class="n">Difference</th><th></th></tr></thead><tbody>' +
+        x.ch.map(function (c) { return row(c.n.replace(' DuitNow', '').replace(' (EDC)', '').replace('Online banking', 'Online'), c.exp, c.rec, c.diff); }).join('') + row('Total', x.exp, x.rec, x.diff, true) + '</tbody></table></div>' +
+        (x.kind === 'explained' && x.note ? '<div class="rc-note">✎ ' + esc(x.note) + '</div>' : '') +
+        (isNeed(x) && r.canEdit ? '<div class="rc-why"><b>Why is it different?</b><div class="rq">' + REASONS.map(function (t, i) { return '<button class="chip" data-act="recPick" data-d="' + x.d + '" data-i="' + i + '">' + esc(t.split(' — ')[0]) + '</button>'; }).join('') + '</div>' +
+          '<div class="rin"><input class="inp" id="rn-' + x.d + '" placeholder="One sentence — e.g. Saturday card settlement arrived Monday"><button class="btn pri" data-act="recSave" data-d="' + x.d + '">Save reason</button></div><div class="note">Saved to Rekon Harian › column P (Catatan finance).</div></div>' : '') + '</section>';
+    }
+
+    /* 4 · 30-day totals by channel (checked days only) */
+    var tot = {}, order = [];
+    last.forEach(function (y) { if (y.kind === 'wait') return; y.ch.forEach(function (c) { if (c.exp === null || c.rec === null) return; if (!tot[c.n]) { tot[c.n] = { e: 0, r: 0 }; order.push(c.n); } tot[c.n].e += c.exp || 0; tot[c.n].r += c.rec || 0; }); });
+    var te = 0, tr = 0;
+    var totals = '<section class="glass pad"><div class="sec-h"><div><h3>30-day check &amp; balance</h3><div class="note">' + checked + ' checked days · waiting days left out</div></div></div><div class="tw"><table class="t rc-t rc-tot"><thead><tr><th>Channel</th><th class="n">Expected</th><th class="n">Received</th><th class="n">Difference</th><th class="n">Received %</th></tr></thead><tbody>' +
+      order.map(function (n) { var o = tot[n], df = o.r - o.e; te += o.e; tr += o.r; return '<tr><td>' + esc(n) + '</td><td class="n">' + rmx(o.e) + '</td><td class="n">' + rmx(o.r) + '</td><td class="n ' + (Math.abs(df) > tol ? (df < 0 ? 'neg' : 'pos') : '') + '">' + rmd(df) + '</td><td class="n">' + (o.e ? (o.r / o.e * 100).toFixed(1) + '%' : '—') + '</td></tr>'; }).join('') +
+      '<tr class="tot"><td>Total</td><td class="n">' + rmx(te) + '</td><td class="n">' + rmx(tr) + '</td><td class="n ' + (Math.abs(tr - te) > tol ? (tr < te ? 'neg' : 'pos') : '') + '">' + rmd(tr - te) + '</td><td class="n">' + (te ? (tr / te * 100).toFixed(1) + '%' : '—') + '</td></tr></tbody></table></div></section>';
+
+    /* Side · To complete */
+    var yday = ymdAdd(r.today, -1), side = '<aside class="rc-side" id="rectodo"><section class="glass pad"><div class="kicker">To complete</div>';
+    var miss = wait.filter(function (y) { return y.miss; }), late = wait.length - miss.length;
+    if (wait.length) side += '<div class="rc-al y"><b>' + (late ? 'Bank data stops at ' + rd(r.bankAsOf) : 'Bank statements missing') + '</b><small>' +
+      (late ? late + ' day' + (late > 1 ? 's' : '') + ' can\'t be checked yet. Download ' + rd(r.waitFrom || r.bankAsOf) + ' → ' + rd(yday) + '.' : '') +
+      (miss.length ? (late ? '<br>' : '') + 'Also missing: ' + miss.map(function (y) { return rd(y.d); }).reverse().join(', ') + ' (sales recorded, no bank figure).' : '') + '</small>' +
+      '<a class="btn pri sm" href="' + esc(r.m2u) + '" target="_blank" rel="noopener">' + ic(I.bank) + '1 · Download in Maybank2u Biz ↗</a><a class="btn sm" href="' + esc(r.urlBank) + '" target="_blank" rel="noopener">2 · Paste in "Bank Maybank" ↗</a></div>';
+    if (need.length) side += '<div class="rc-al r"><b>' + need.length + ' day' + (need.length > 1 ? 's' : '') + ' need a reason</b><small>Tap a day, then pick or write a reason.</small><div class="rc-nl">' +
+      need.map(function (y) { return '<button data-act="recDay" data-d="' + y.d + '" class="' + y.kind + (y.d === S.recSel ? ' sel' : '') + '"><span>' + DOW[dowOf(y.d)] + ' ' + rd(y.d) + '</span><b>' + rmd(y.diff) + '</b></button>'; }).join('') + '</div></div>';
+    if (!todo) side += '<div class="rc-al g"><b>✅ Nothing to complete</b><small>Bank data is current and every difference is explained.</small></div>';
+    side += '<div class="rc-meta"><span>Bank data to <b>' + rd(r.bankAsOf) + '</b></span><span>POS data to <b>' + rd(r.feedAsOf) + '</b></span><span>Tolerance <b>RM' + fnum(tol, 2) + '</b> · card/online may land up to ' + esc(r.lagDays || 3) + ' days late</span></div>' +
+      '<a class="btn sm ghost" href="' + esc(r.urlRekon) + '" target="_blank" rel="noopener">Open Rekon Harian sheet ↗</a></section></aside>';
+
+    view('<div class="rc-grid"><div class="rc-main">' + verdict + heat + chk + totals + '</div>' + side + '</div>');
   }
-  A.recGo = function () { var w = $('#recneed'); if (w) w.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
-  A.recPick = function (el) { var i = $('#rn-' + el.getAttribute('data-d')); if (i) { i.value = REASONS[+el.getAttribute('data-i')]; i.focus(); } };
   A.recDay = function (el) {
-    var d = el.getAttribute('data-d'), c = $('#rc-' + d);
-    if (c) { c.scrollIntoView({ behavior: 'smooth', block: 'center' }); c.classList.add('flash'); setTimeout(function () { c.classList.remove('flash'); }, 1400); return; }
-    var x = S.recon.days.filter(function (y) { return y.d === d; })[0]; if (!x) return;
-    modal('<h3>' + esc(x.day) + ' ' + rd(x.d) + '</h3><div style="margin:8px 0 12px">' + chip(RK[x.kind][1], RK[x.kind][0]) + '</div><div class="rch">' + x.ch.map(function (c) { return '<div><small>' + esc(c.n) + '</small><span>Expected ' + rmx(c.exp) + ' · Received ' + rmx(c.rec) + '</span><b>' + (c.diff === null ? '—' : rmx(c.diff)) + '</b></div>'; }).join('') + '</div>' +
-      (x.note ? '<p class="note" style="margin-top:12px">Note: ' + esc(x.note) + '</p>' : '') + '<div class="row-btn"><button class="btn" data-act="closeModal">Close</button></div>');
+    S.recSel = el.getAttribute('data-d'); reconView(S.recon);
+    var c = $('#recchk'); if (c && window.innerWidth < 1100) c.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
+  A.recStep = function (el) {
+    var ds = S.recon.days.map(function (x) { return x.d; }), i = ds.indexOf(S.recSel) + (+el.getAttribute('data-n'));
+    if (i >= 0 && i < ds.length) { S.recSel = ds[i]; reconView(S.recon); }
+  };
+  A.recTodo = function () { var w = $('#rectodo'); if (w) w.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+  A.recPick = function (el) { var i = $('#rn-' + el.getAttribute('data-d')); if (i) { i.value = REASONS[+el.getAttribute('data-i')]; i.focus(); } };
   A.recSave = function (el) {
     var d = el.getAttribute('data-d'), t = val('rn-' + d); if (t.length < 5) { toast('Write a short reason first', true); return; }
     el.disabled = true; el.textContent = 'Saving…';
     rpc('fxReconNote', [S.token, d, t]).then(function () {
       toast('Reason saved for ' + rd(d));
-      S.recon.days.forEach(function (x) { if (x.d === d) { x.kind = 'explained'; x.note = t; } }); keep('recon', S.recon); reconView(S.recon);
+      S.recon.days.forEach(function (x) { if (x.d === d) { x.kind = 'explained'; x.note = t; } });
+      var nx = S.recon.days.filter(isNeed)[0]; if (nx) S.recSel = nx.d;
+      keep('recon', S.recon); reconView(S.recon);
     }).catch(function (e) { el.disabled = false; el.textContent = 'Save reason'; toast(e.error, true); });
   };
 
