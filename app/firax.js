@@ -7,6 +7,20 @@
   var S = { token: null, me: null, page: 'home', home: null, pages: {}, acts: null, tab: {}, users: null, busy: {} };
   var A = {};
   var TK = 'firax.t';
+  /* Tema: cerah (lalai) atau gelap. Disimpan per pelayar. C = warna untuk SVG/inline (dikemas kini bila tema ditukar). */
+  var PAL = {
+    light: { g: '#16a34a', g1: '#22c55e', g3: '#15803d', y: '#d48806', r: '#dc2626', o: '#ea580c', w: '#94a39b', mut: '#687c70', gold: '#a8710f', rt: '#c62828', ink: '#0f1f17', yt: '#92400e', h1: '#eaf7ef', bg: '#f2f6f3', h2: '#d3efde', h3: '#ffffff', h4: '#dcefe3', grid: 'rgba(15,80,45,.10)', track: 'rgba(15,60,35,.08)' },
+    dark: { g: '#2fe07a', g1: '#6dffa8', g3: '#0f6b34', y: '#ffb547', r: '#ff5d5d', o: '#ff8a3d', w: '#9fb2a7', mut: '#7f9888', gold: '#ffda7c', rt: '#ff8b8b', ink: '#ecf7f0', yt: '#ffcf8a', h1: '#0c2a1b', bg: '#030806', h2: '#123f27', h3: '#05110b', h4: '#071a10', grid: 'rgba(140,255,190,.08)', track: 'rgba(255,255,255,.07)' }
+  };
+  var C = {};
+  function themeGet() { try { return localStorage.getItem('firax.theme') === 'dark' ? 'dark' : 'light'; } catch (e) { return 'light'; } }
+  function themeSet(t) {
+    try { localStorage.setItem('firax.theme', t); } catch (e) {}
+    var k; for (k in PAL[t]) C[k] = PAL[t][k];
+    if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); else document.documentElement.removeAttribute('data-theme');
+    var m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute('content', t === 'dark' ? '#030806' : '#f2f6f3');
+  }
+  themeSet(themeGet());
 
   /* ======================= util ======================= */
   function esc(v) { return String(v === null || v === undefined ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -37,24 +51,24 @@
   function isNumCell(v) { return /^[\s(−-]*(RM\s?)?-?[\d,]+(\.\d+)?\)?\s*(%|bln|bulan|hari|×)?$/.test(String(v).trim()) || /^-?[\d,.]+%$/.test(String(v).trim()); }
 
   /* ======================= jenama ======================= */
-  var MARK = '<svg viewBox="0 0 48 48"><defs><linearGradient id="fxg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6dffa8"/><stop offset="1" stop-color="#16a34a"/></linearGradient></defs>' +
-    '<path d="M12 8h26l-3.6 7H20v6.5h13l-3.4 6.6H20V40h-8z" fill="url(#fxg)"/><path d="M30.5 31.5l4.3 4.3 7.2-9.8" fill="none" stroke="#6dffa8" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var MARK = '<svg viewBox="0 0 48 48"><defs><linearGradient id="fxg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="' + C.g1 + '"/><stop offset="1" stop-color="#16a34a"/></linearGradient></defs>' +
+    '<path d="M12 8h26l-3.6 7H20v6.5h13l-3.4 6.6H20V40h-8z" fill="url(#fxg)"/><path d="M30.5 31.5l4.3 4.3 7.2-9.8" fill="none" stroke="' + C.g1 + '" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   /** Seni latar hero: gunung/graf kewangan bercahaya hijau (SVG, tiada imej luar). */
   function heroArt(id) {
     id = id || 'h';
     return '<svg viewBox="0 0 1200 420" preserveAspectRatio="xMidYMid slice"><defs>' +
-      '<linearGradient id="' + id + 'a" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0c2a1b"/><stop offset="1" stop-color="#030806"/></linearGradient>' +
-      '<linearGradient id="' + id + 'b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2fe07a" stop-opacity=".35"/><stop offset="1" stop-color="#2fe07a" stop-opacity="0"/></linearGradient>' +
-      '<linearGradient id="' + id + 'c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#123f27"/><stop offset="1" stop-color="#05110b"/></linearGradient>' +
-      '<linearGradient id="' + id + 'd" x1="0" x2="1"><stop offset="0" stop-color="#030806" stop-opacity=".96"/><stop offset=".55" stop-color="#030806" stop-opacity=".55"/><stop offset="1" stop-color="#030806" stop-opacity=".1"/></linearGradient>' +
-      '<radialGradient id="' + id + 'e" cx=".72" cy=".3" r=".5"><stop offset="0" stop-color="#2fe07a" stop-opacity=".22"/><stop offset="1" stop-color="#2fe07a" stop-opacity="0"/></radialGradient></defs>' +
+      '<linearGradient id="' + id + 'a" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + C.h1 + '"/><stop offset="1" stop-color="' + C.bg + '"/></linearGradient>' +
+      '<linearGradient id="' + id + 'b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + C.g + '" stop-opacity=".35"/><stop offset="1" stop-color="' + C.g + '" stop-opacity="0"/></linearGradient>' +
+      '<linearGradient id="' + id + 'c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + C.h2 + '"/><stop offset="1" stop-color="' + C.h3 + '"/></linearGradient>' +
+      '<linearGradient id="' + id + 'd" x1="0" x2="1"><stop offset="0" stop-color="' + C.bg + '" stop-opacity=".96"/><stop offset=".55" stop-color="' + C.bg + '" stop-opacity=".55"/><stop offset="1" stop-color="' + C.bg + '" stop-opacity=".1"/></linearGradient>' +
+      '<radialGradient id="' + id + 'e" cx=".72" cy=".3" r=".5"><stop offset="0" stop-color="' + C.g + '" stop-opacity=".22"/><stop offset="1" stop-color="' + C.g + '" stop-opacity="0"/></radialGradient></defs>' +
       '<rect width="1200" height="420" fill="url(#' + id + 'a)"/><rect width="1200" height="420" fill="url(#' + id + 'e)"/>' +
-      Array.apply(null, Array(9)).map(function (_, i) { return '<line x1="0" x2="1200" y1="' + (40 + i * 44) + '" y2="' + (40 + i * 44) + '" stroke="#2fe07a" stroke-opacity=".05"/>'; }).join('') +
+      Array.apply(null, Array(9)).map(function (_, i) { return '<line x1="0" x2="1200" y1="' + (40 + i * 44) + '" y2="' + (40 + i * 44) + '" stroke="' + C.g + '" stroke-opacity=".05"/>'; }).join('') +
       '<path d="M0 300 L120 250 L210 280 L330 190 L430 230 L540 150 L640 200 L760 110 L860 160 L980 80 L1080 120 L1200 60 L1200 420 L0 420Z" fill="url(#' + id + 'c)" opacity=".9"/>' +
-      '<path d="M0 340 L140 300 L260 320 L380 260 L520 290 L640 230 L760 260 L900 190 L1020 220 L1200 150 L1200 420 L0 420Z" fill="#071a10" opacity=".95"/>' +
-      '<path d="M0 300 L120 250 L210 280 L330 190 L430 230 L540 150 L640 200 L760 110 L860 160 L980 80 L1080 120 L1200 60" fill="none" stroke="#2fe07a" stroke-width="2.4" stroke-opacity=".85" style="filter:drop-shadow(0 0 6px #2fe07a)"/>' +
+      '<path d="M0 340 L140 300 L260 320 L380 260 L520 290 L640 230 L760 260 L900 190 L1020 220 L1200 150 L1200 420 L0 420Z" fill="' + C.h4 + '" opacity=".95"/>' +
+      '<path d="M0 300 L120 250 L210 280 L330 190 L430 230 L540 150 L640 200 L760 110 L860 160 L980 80 L1080 120 L1200 60" fill="none" stroke="' + C.g + '" stroke-width="2.4" stroke-opacity=".85" style="filter:drop-shadow(0 0 6px ' + C.g + ')"/>' +
       '<path d="M0 300 L120 250 L210 280 L330 190 L430 230 L540 150 L640 200 L760 110 L860 160 L980 80 L1080 120 L1200 60 L1200 420 L0 420Z" fill="url(#' + id + 'b)"/>' +
-      [[330, 190], [540, 150], [760, 110], [980, 80]].map(function (p) { return '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="5" fill="#6dffa8" style="filter:drop-shadow(0 0 8px #2fe07a)"/>'; }).join('') +
+      [[330, 190], [540, 150], [760, 110], [980, 80]].map(function (p) { return '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="5" fill="' + C.g1 + '" style="filter:drop-shadow(0 0 8px ' + C.g + ')"/>'; }).join('') +
             '<rect width="1200" height="420" fill="url(#' + id + 'd)"/></svg>';
   }
 
@@ -65,27 +79,27 @@
     var max = Math.max.apply(null, data.map(function (d) { return Math.max(d.v || 0, d.t || 0); })) || 1; max *= 1.12;
     var bw = (W - P.l - P.r) / n, y = function (v) { return P.t + (H - P.t - P.b) * (1 - (v || 0) / max); };
     var s = '<div class="chart"><svg viewBox="0 0 ' + W + ' ' + H + '">';
-    for (var g = 0; g <= 4; g++) { var gv = max * g / 4, gy = y(gv); s += '<line x1="' + P.l + '" x2="' + (W - P.r) + '" y1="' + gy + '" y2="' + gy + '" stroke="rgba(140,255,190,.08)"/><text x="' + (P.l - 8) + '" y="' + (gy + 4) + '" fill="#7f9888" font-size="10" text-anchor="end">' + (gv >= 1e6 ? (gv / 1e6).toFixed(1) + 'm' : gv >= 1000 ? Math.round(gv / 1000) + 'k' : Math.round(gv)) + '</text>'; }
-    s += '<defs><linearGradient id="bg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3af08a"/><stop offset="1" stop-color="#0f6b34"/></linearGradient></defs>';
+    for (var g = 0; g <= 4; g++) { var gv = max * g / 4, gy = y(gv); s += '<line x1="' + P.l + '" x2="' + (W - P.r) + '" y1="' + gy + '" y2="' + gy + '" stroke="' + C.grid + '"/><text x="' + (P.l - 8) + '" y="' + (gy + 4) + '" fill="' + C.mut + '" font-size="10" text-anchor="end">' + (gv >= 1e6 ? (gv / 1e6).toFixed(1) + 'm' : gv >= 1000 ? Math.round(gv / 1000) + 'k' : Math.round(gv)) + '</text>'; }
+    s += '<defs><linearGradient id="bg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + C.g1 + '"/><stop offset="1" stop-color="' + C.g3 + '"/></linearGradient></defs>';
     data.forEach(function (d, i) {
       var x = P.l + i * bw + bw * .2, w = bw * .6, yy = y(d.v), hit = d.t ? d.v >= d.t : true;
       s += '<rect x="' + x + '" y="' + yy + '" width="' + w + '" height="' + Math.max(0, H - P.b - yy) + '" rx="6" fill="' + (hit ? 'url(#bg1)' : 'rgba(255,181,71,.75)') + '"><title>' + esc(d.l) + ': RM' + fnum(d.v) + (d.t ? ' / target RM' + fnum(d.t) : '') + '</title></rect>';
-      s += '<text x="' + (x + w / 2) + '" y="' + (H - 9) + '" fill="#7f9888" font-size="10" text-anchor="middle">' + esc(d.l) + '</text>';
+      s += '<text x="' + (x + w / 2) + '" y="' + (H - 9) + '" fill="' + C.mut + '" font-size="10" text-anchor="middle">' + esc(d.l) + '</text>';
     });
     var tg = data.filter(function (d) { return d.t; });
-    if (tg.length) s += '<polyline fill="none" stroke="#ffda7c" stroke-width="2" stroke-dasharray="5 4" points="' + data.map(function (d, i) { return d.t ? (P.l + i * bw + bw / 2) + ',' + y(d.t) : ''; }).filter(Boolean).join(' ') + '"/>';
-    s += '</svg><div class="legend"><span><i style="background:#2fe07a"></i>' + esc(o.a || 'Actual') + '</span>' + (tg.length ? '<span><i style="background:#ffda7c"></i>' + esc(o.b || 'Target') + '</span><span><i style="background:#ffb547"></i>Below target</span>' : '') + '</div></div>';
+    if (tg.length) s += '<polyline fill="none" stroke="' + C.gold + '" stroke-width="2" stroke-dasharray="5 4" points="' + data.map(function (d, i) { return d.t ? (P.l + i * bw + bw / 2) + ',' + y(d.t) : ''; }).filter(Boolean).join(' ') + '"/>';
+    s += '</svg><div class="legend"><span><i style="background:' + C.g + '"></i>' + esc(o.a || 'Actual') + '</span>' + (tg.length ? '<span><i style="background:' + C.gold + '"></i>' + esc(o.b || 'Target') + '</span><span><i style="background:' + C.y + '"></i>Below target</span>' : '') + '</div></div>';
     return s;
   }
   function ring(p, label) {
-    var v = Math.max(0, Math.min(100, p || 0)), C = 2 * Math.PI * 40, col = p >= 95 ? '#2fe07a' : p >= 75 ? '#ffb547' : '#ff5d5d';
-    return '<div class="ring"><svg viewBox="0 0 96 96" width="96" height="96"><circle cx="48" cy="48" r="40" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="9"/><circle cx="48" cy="48" r="40" fill="none" stroke="' + col + '" stroke-width="9" stroke-linecap="round" stroke-dasharray="' + (C * v / 100) + ' ' + C + '" transform="rotate(-90 48 48)" style="filter:drop-shadow(0 0 6px ' + col + ')"/></svg><b>' + (p === null || p === undefined ? '—' : Math.round(p) + '%') + '</b></div>' + (label ? '<div class="note" style="text-align:center;margin-top:4px">' + esc(label) + '</div>' : '');
+    var v = Math.max(0, Math.min(100, p || 0)), CIR = 2 * Math.PI * 40, col = p >= 95 ? C.g : p >= 75 ? C.y : C.r;
+    return '<div class="ring"><svg viewBox="0 0 96 96" width="96" height="96"><circle cx="48" cy="48" r="40" fill="none" stroke="' + C.track + '" stroke-width="9"/><circle cx="48" cy="48" r="40" fill="none" stroke="' + col + '" stroke-width="9" stroke-linecap="round" stroke-dasharray="' + (CIR * v / 100) + ' ' + CIR + '" transform="rotate(-90 48 48)" style="filter:drop-shadow(0 0 6px ' + col + ')"/></svg><b>' + (p === null || p === undefined ? '—' : Math.round(p) + '%') + '</b></div>' + (label ? '<div class="note" style="text-align:center;margin-top:4px">' + esc(label) + '</div>' : '');
   }
   function spark(vals, col) {
     vals = vals.filter(function (v) { return v !== null && !isNaN(v); }); if (vals.length < 2) return '';
     var W = 220, H = 70, mx = Math.max.apply(null, vals), mn = Math.min.apply(null, vals), rg = mx - mn || 1;
     var pts = vals.map(function (v, i) { return (i * W / (vals.length - 1)).toFixed(1) + ',' + (H - 6 - (v - mn) / rg * (H - 14)).toFixed(1); });
-    return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H + '" preserveAspectRatio="none"><defs><linearGradient id="sp' + vals.length + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + (col || '#2fe07a') + '" stop-opacity=".35"/><stop offset="1" stop-color="' + (col || '#2fe07a') + '" stop-opacity="0"/></linearGradient></defs><polygon points="0,' + H + ' ' + pts.join(' ') + ' ' + W + ',' + H + '" fill="url(#sp' + vals.length + ')"/><polyline points="' + pts.join(' ') + '" fill="none" stroke="' + (col || '#2fe07a') + '" stroke-width="2.4" style="filter:drop-shadow(0 0 5px ' + (col || '#2fe07a') + ')"/></svg>';
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H + '" preserveAspectRatio="none"><defs><linearGradient id="sp' + vals.length + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + (col || C.g) + '" stop-opacity=".35"/><stop offset="1" stop-color="' + (col || C.g) + '" stop-opacity="0"/></linearGradient></defs><polygon points="0,' + H + ' ' + pts.join(' ') + ' ' + W + ',' + H + '" fill="url(#sp' + vals.length + ')"/><polyline points="' + pts.join(' ') + '" fill="none" stroke="' + (col || C.g) + '" stroke-width="2.4" style="filter:drop-shadow(0 0 5px ' + (col || C.g) + ')"/></svg>';
   }
 
   /** Bar mendatar berperingkat (cth. % sasaran setiap cawangan). rows=[{l,v,sub,lamp}], v dalam %. */
@@ -99,10 +113,10 @@
   }
   /** Tolok skor 0–100 (separuh bulatan). */
   function gauge(score, label, sub) {
-    var v = score === null || score === undefined ? null : Math.max(0, Math.min(100, score)), col = v === null ? '#9fb2a7' : v >= 80 ? '#2fe07a' : v >= 60 ? '#ffb547' : v >= 40 ? '#ff8a3d' : '#ff5d5d';
-    var R = 70, C = Math.PI * R, dash = v === null ? 0 : C * v / 100;
-    return '<div class="gauge"><svg viewBox="0 0 180 104" width="180" height="104"><path d="M20 94 A70 70 0 0 1 160 94" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="14" stroke-linecap="round"/>' +
-      '<path d="M20 94 A70 70 0 0 1 160 94" fill="none" stroke="' + col + '" stroke-width="14" stroke-linecap="round" stroke-dasharray="' + dash + ' ' + C + '" style="filter:drop-shadow(0 0 8px ' + col + ')"/></svg>' +
+    var v = score === null || score === undefined ? null : Math.max(0, Math.min(100, score)), col = v === null ? C.w : v >= 80 ? C.g : v >= 60 ? C.y : v >= 40 ? C.o : C.r;
+    var R = 70, CIR = Math.PI * R, dash = v === null ? 0 : CIR * v / 100;
+    return '<div class="gauge"><svg viewBox="0 0 180 104" width="180" height="104"><path d="M20 94 A70 70 0 0 1 160 94" fill="none" stroke="' + C.track + '" stroke-width="14" stroke-linecap="round"/>' +
+      '<path d="M20 94 A70 70 0 0 1 160 94" fill="none" stroke="' + col + '" stroke-width="14" stroke-linecap="round" stroke-dasharray="' + dash + ' ' + CIR + '" style="filter:drop-shadow(0 0 8px ' + col + ')"/></svg>' +
       '<div class="gv"><b style="color:' + col + '">' + (v === null ? '—' : Math.round(v)) + '</b><small>/100</small></div><div class="gl">' + esc(label || '') + '</div>' + (sub ? '<div class="gs">' + esc(sub) + '</div>' : '') + '</div>';
   }
 
@@ -356,7 +370,7 @@
     var h = S.home; if (!h || !h.live) return '';
     var l = h.live;
     return '<div class="side-card"><b>' + dot(l.status) + ' &nbsp;' + esc(en(unemo(l.status)) || 'Status') + '</b><small>Data sources · ' + esc(l.sources || '—') + ' connected</small>' +
-      '<div class="row"><span class="muted">Oldest data</span><b>' + esc(String(l.oldest || '—').replace(/hari/, 'days')) + '</b></div><div class="row"><span class="muted">Action 🔴</span><b style="color:#ff8b8b">' + esc(l.red || '0') + '</b></div></div>';
+      '<div class="row"><span class="muted">Oldest data</span><b>' + esc(String(l.oldest || '—').replace(/hari/, 'days')) + '</b></div><div class="row"><span class="muted">Action 🔴</span><b style="color:' + C.rt + '">' + esc(l.red || '0') + '</b></div></div>';
   }
   function layout(inner) {
     var p = PG[S.page], live = S.home && S.home.live;
@@ -366,6 +380,7 @@
       '<div class="grow"><h1>' + esc(p.t) + '</h1><div class="sub">' + esc(p.sub) + '</div></div>' +
       '<button class="pill srch" data-act="search" title="Search pages or suppliers ( / )">' + ic(I.search).replace('<svg', '<svg width="15" height="15"') + '<span class="hide-m">Search…</span><kbd class="hide-m">/</kbd></button>' +
       (live ? '<span class="pill live hide-m">' + dot(live.status) + esc(en(unemo(live.status)) || 'Live') + '</span>' : '') +
+      '<button class="pill thm" data-act="theme" title="Switch light / dark mode">' + (themeGet() === 'dark' ? ic(I.sun || '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>') : ic('<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>')).replace('<svg', '<svg width="15" height="15"') + '<span class="hide-m">' + (themeGet() === 'dark' ? 'Light' : 'Dark') + '</span></button>' +
       '<button class="pill hide-m" data-act="refresh" title="Refresh data from the sheet">' + ic(I.refresh).replace('<svg', '<svg width="15" height="15"') + 'Refresh</button>' +
       '<button class="pill hide-m" data-act="print" title="Print / save this page as PDF">' + ic(I.print).replace('<svg', '<svg width="15" height="15"') + 'Print</button>' +
       '<button class="user" data-act="userMenu"><span class="av">' + esc(ini(S.me.name)) + '</span><b>' + esc(S.me.name) + '</b>' + ic(I.arrow).replace('<svg', '<svg width="14" height="14" style="transform:rotate(90deg)"') + '</button></header>' +
@@ -381,6 +396,7 @@
     R();
   }
   A.nav = function (el) { go(el.getAttribute('data-p')); };
+  A.theme = function () { var y = window.scrollY; themeSet(themeGet() === 'dark' ? 'light' : 'dark'); if (S.token) { go(S.page); setTimeout(function () { window.scrollTo(0, y); }, 60); } };
   A.openSide = function () { $('#side').classList.add('open'); $('#scrim').classList.add('open'); };
   A.closeSide = function () { var s = $('#side'); if (s) s.classList.remove('open'); var c = $('#scrim'); if (c) c.classList.remove('open'); };
   A.refresh = function (el) {
@@ -404,7 +420,7 @@
     rpc('fxChangePin', [S.token, val('c0'), val('c1')]).then(function (r) { S.token = r.token; sset(TK, r.token); closeModal(); toast('PIN changed'); }).catch(function (e) { el.disabled = false; $('#cm').innerHTML = '<div class="err">' + esc(e.error) + '</div>'; });
   };
   function view(html) { var v = $('#view'); if (v) v.innerHTML = html; }
-  function fail(e) { view('<div class="glass pad"><div class="err">' + esc((e && e.error) || 'Failed to load.') + '</div><div class="row-btn" style="justify-content:flex-start"><button class="btn" data-act="refresh">' + ic(I.refresh) + 'Try again</button></div></div>'); }
+  function fail(e) { if (e && !e.error) try { console.error("FAIL", e && (e.stack || e)); } catch (x) {} view('<div class="glass pad"><div class="err">' + esc((e && e.error) || 'Failed to load.') + '</div><div class="row-btn" style="justify-content:flex-start"><button class="btn" data-act="refresh">' + ic(I.refresh) + 'Try again</button></div></div>'); }
   function needHome() { return S.home ? Promise.resolve(S.home) : rpc('fxHome', [S.token]).then(function (h) { S.home = h; keep('home', h); return h; }); }
   function needRt() { return S.rt ? Promise.resolve(S.rt) : rpc('fxRoutine', [S.token]).then(function (r) { S.rt = r; keep('rt', r); return r; }); }
 
@@ -529,7 +545,7 @@
       '<div class="brief"><div class="bh">30-second summary</div>' + bullets.map(function (b) { return '<div class="bl"><span class="dot ' + b[0] + '"></span><span>' + b[1] + '</span></div>'; }).join('') + '</div>' +
       '<div class="cta"><button class="btn pri" data-act="nav" data-p="actions">' + ic(I.bolt) + 'Today\'s actions' + (reds.length ? ' · ' + reds.length + ' 🔴' : '') + '</button><button class="btn" data-act="nav" data-p="routine">' + ic(I.routine) + 'Today\'s routine</button></div></div>' +
       '<div class="r"><div class="health"><div class="hh"><span>Financial Health Score</span>' + helpBtn('', 'skor') + '</div>' + gauge(hs.score, hs.grade, hs.score === null ? '' : 'Based on ' + hs.rated + ' KPIs with complete data') +
-      '<div class="conf"><div class="ch"><span>Data confidence ' + helpBtn('', 'yakin') + '</span><b>' + Math.round(hs.rated / hs.all * 100) + '%</b></div><div class="prog"><i style="width:' + (hs.rated / hs.all * 100) + '%;' + (hs.rated / hs.all < .7 ? 'background:linear-gradient(90deg,#ff8a3d,#ffb547)' : '') + '"></i></div><small>' + hs.rated + ' / ' + hs.all + ' KPIs have complete data · the rest are ⚪ awaiting data or a decision</small></div>' +
+      '<div class="conf"><div class="ch"><span>Data confidence ' + helpBtn('', 'yakin') + '</span><b>' + Math.round(hs.rated / hs.all * 100) + '%</b></div><div class="prog"><i style="width:' + (hs.rated / hs.all * 100) + '%;' + (hs.rated / hs.all < .7 ? 'background:linear-gradient(90deg,' + C.o + ',' + C.y + ')' : '') + '"></i></div><small>' + hs.rated + ' / ' + hs.all + ' KPIs have complete data · the rest are ⚪ awaiting data or a decision</small></div>' +
       '<div class="pmini">' + P.map(function (p) { return '<button data-act="nav" data-p="' + p.p + '"><span class="dot ' + p.l + '"></span>' + p.n + '<em>' + LW[p.l] + '</em></button>'; }).join('') + '</div></div></div></section>';
 
     var pillars = '<section class="pillars">' + P.map(function (p) {
@@ -658,7 +674,7 @@
     var tabs = d.tabs.length > 1 ? '<div class="tabs">' + d.tabs.map(function (x, i) { return '<button class="' + (i === ti ? 'on' : '') + '" data-act="tab" data-i="' + i + '">' + esc(x.name) + '</button>'; }).join('') + '</div>' : '';
     var head = '<section class="glass ph"><div class="hero-art" style="position:absolute;inset:0;opacity:.35;pointer-events:none">' + heroArt('ph' + key) + '</div><div style="position:relative;display:flex;flex-direction:column;gap:10px">' +
       '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start"><div><div class="kicker">' + esc(t.name) + '</div><h2 style="margin-top:4px">' + esc(t.title || t.name) + '</h2></div>' + (t.status ? chip(t.status) : '') + '</div>' +
-      (t.sub ? '<p>' + esc(t.sub) + '</p>' : '') + guideBox(t.name) + (t.alert ? '<div class="err" style="color:#ffcf8a;background:rgba(255,181,71,.08);border-color:rgba(255,181,71,.3)">' + esc(t.alert) + '</div>' : '') + tabs + '</div></section>';
+      (t.sub ? '<p>' + esc(t.sub) + '</p>' : '') + guideBox(t.name) + (t.alert ? '<div class="err" style="color:' + C.yt + ';background:rgba(255,181,71,.08);border-color:rgba(255,181,71,.3)">' + esc(t.alert) + '</div>' : '') + tabs + '</div></section>';
     view(head + moduleTab(t, key + ti) + '<div class="note" style="text-align:center">Data as of ' + esc(d.asOf || '') + ' · tab "' + esc(t.name) + '"</div>');
   }
   A.tab = function (el) { S.tab[S.page] = +el.getAttribute('data-i'); moduleView(S.pages[S.page]); };
@@ -682,7 +698,7 @@
         '<textarea id="nt-' + esc(r.code) + '" placeholder="Evidence / notes (required for Done)"></textarea><button class="btn pri sm" style="justify-content:center" data-act="actSave" data-c="' + esc(r.code) + '">Update</button>' +
         (r.note ? '<div class="note">Last: ' + esc(r.note) + '</div>' : '') + '</div>' : '<div class="upd"><div class="note">Status: <b>' + esc(r.status || 'Baru') + '</b></div>' + (r.note ? '<div class="note">' + esc(r.note) + '</div>' : '') + '</div>';
       return '<article class="act ' + l + '"><div class="edge"></div><div class="body"><div><div class="code">' + esc(r.code) + ' · ' + dot(r.lamp) + '</div><h4>' + esc(r.trigger) + '</h4>' +
-        '<div class="todo">' + esc(r.action && r.action !== '—' ? r.action : 'No action needed right now.') + '</div><div class="vt">Now <b style="color:#ecf7f0">' + esc(r.value || '—') + '</b> · limit ' + esc(r.threshold || '—') + '</div>' + (r.how ? '<details class="how"><summary>How to resolve (' + r.how.steps.length + ' steps)</summary><p class="note">' + esc(r.how.why) + '</p><ol>' + r.how.steps.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ol></details>' : '') +
+        '<div class="todo">' + esc(r.action && r.action !== '—' ? r.action : 'No action needed right now.') + '</div><div class="vt">Now <b style="color:' + C.ink + '">' + esc(r.value || '—') + '</b> · limit ' + esc(r.threshold || '—') + '</div>' + (r.how ? '<details class="how"><summary>How to resolve (' + r.how.steps.length + ' steps)</summary><p class="note">' + esc(r.how.why) + '</p><ol>' + r.how.steps.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ol></details>' : '') +
         '<div class="meta"><span class="chip">' + esc(r.pic) + '</span><span class="chip y">SLA ' + esc(r.sla) + '</span>' + (r.status ? '<span class="chip g">' + esc(r.status) + '</span>' : '') + (r.url ? '<a class="chip g" href="' + esc(r.url) + '" target="_blank" rel="noopener">Resolve now ↗</a>' : '') + '</div></div>' + upd + '</div></article>';
     }).join('') : '<div class="glass pad"><div class="empty"><b>Nothing here 🎉</b></div></div>';
     view(sum + '<section class="glass pad">' + tabs + '<p class="note" style="margin:10px 0 0">Thresholds and owners are set in the FIRAX sheet (Settings). Unresolved 🔴 items are carried to the WAR outstanding issues. Updates here write the Status and evidence to the Action Engine tab.</p></section><section class="acts">' + items + '</section><div class="note" style="text-align:center">Data as of ' + esc(a.asOf || '') + '</div>');
@@ -722,7 +738,7 @@
     var id = el.getAttribute('data-id');
     el.disabled = true;
     rpc('fxUserSave', [S.token, { id: id || '', name: val('un'), role: val('ur'), jawatan: val('uj'), caw: 'SEMUA', active: id ? val('ua') === '1' : true, method: val('um') }]).then(function (r) {
-      if (r.code) modal('<h3>Activation code</h3><p class="note">Give this code to <b>' + esc(r.name) + '</b>. It can be used once only and expires ' + esc(r.tamat) + '.</p><div style="font-size:28px;letter-spacing:.2em;font-weight:700;text-align:center;margin:16px 0;color:#2fe07a">' + esc(r.code) + '</div><div class="row-btn"><button class="btn pri" data-act="closeModal">Done</button></div>');
+      if (r.code) modal('<h3>Activation code</h3><p class="note">Give this code to <b>' + esc(r.name) + '</b>. It can be used once only and expires ' + esc(r.tamat) + '.</p><div style="font-size:28px;letter-spacing:.2em;font-weight:700;text-align:center;margin:16px 0;color:' + C.g + '">' + esc(r.code) + '</div><div class="row-btn"><button class="btn pri" data-act="closeModal">Done</button></div>');
       else { closeModal(); toast(r.pinRecorded ? 'User added — PIN written to APP PENGGUNA column N' : 'Saved'); }
       renderSettings();
     }).catch(function (e) { el.disabled = false; $('#um2').innerHTML = '<div class="err">' + esc(e.error) + '</div>'; });
@@ -734,7 +750,7 @@
   A.doReset = function (el) {
     el.disabled = true;
     rpc('fxUserCode', [S.token, el.getAttribute('data-id'), el.getAttribute('data-m')]).then(function (r) {
-      if (r.code) modal('<h3>Activation code</h3><div style="font-size:28px;letter-spacing:.2em;font-weight:700;text-align:center;margin:16px 0;color:#2fe07a">' + esc(r.code) + '</div><p class="note">Expires ' + esc(r.tamat) + '.</p><div class="row-btn"><button class="btn pri" data-act="closeModal">Done</button></div>');
+      if (r.code) modal('<h3>Activation code</h3><div style="font-size:28px;letter-spacing:.2em;font-weight:700;text-align:center;margin:16px 0;color:' + C.g + '">' + esc(r.code) + '</div><p class="note">Expires ' + esc(r.tamat) + '.</p><div class="row-btn"><button class="btn pri" data-act="closeModal">Done</button></div>');
       else { closeModal(); toast('New PIN written to APP PENGGUNA column N'); }
       renderSettings();
     }).catch(function (e) { el.disabled = false; toast(e.error, true); });
@@ -897,7 +913,7 @@
     else { rows = (r.bday || []).map(function (b) { return b.row; }); total = rows.length * 100; title = 'Birthday gift · ' + rows.length + ' staff'; }
     if (!rows.length) { toast('Select at least one row', true); return; }
     S.payM = { kind: k, key: key, rows: rows };
-    modal('<h3>Mark as paid</h3><p class="note" style="margin:6px 0 14px">' + esc(title) + ' · ' + rows.length + ' rows · <b style="color:#2fe07a">' + rmf(total) + '</b><br>Make sure the M2U amount matches this total.</p>' +
+    modal('<h3>Mark as paid</h3><p class="note" style="margin:6px 0 14px">' + esc(title) + ' · ' + rows.length + ' rows · <b style="color:' + C.g + '">' + rmf(total) + '</b><br>Make sure the M2U amount matches this total.</p>' +
       field('M2U payment slip (PDF / image)' + (needSlip ? '' : ' · optional'), '<input type="file" id="pslip" accept="application/pdf,image/*">') +
       field('M2U transaction reference', '<input id="pref" placeholder="e.g. M2U 1234567890">') +
       field('Payment date', '<input type="date" id="pdate" value="' + esc(r.today) + '" max="' + esc(r.today) + '">') +
@@ -954,7 +970,7 @@
     var list = r.vendors.filter(function (v) { return !f || (v.key + ' ' + v.short + ' ' + v.kod).toLowerCase().indexOf(f) >= 0; });
     var totOut = r.vendors.reduce(function (a, v) { return a + v.out; }, 0), totLate = r.vendors.reduce(function (a, v) { return a + v.late; }, 0);
     var side = '<aside class="glass pad soa-list"><div class="kicker">Vendor list · ' + r.vendors.length + '</div>' +
-      '<div class="soa-sum"><div><small>Total outstanding</small><b>' + rmf(totOut) + '</b></div><div><small>Overdue</small><b style="color:#ff8b8b">' + rmf(totLate) + '</b></div></div>' +
+      '<div class="soa-sum"><div><small>Total outstanding</small><b>' + rmf(totOut) + '</b></div><div><small>Overdue</small><b style="color:' + C.rt + '">' + rmf(totLate) + '</b></div></div>' +
       '<input class="inp" id="soaq" placeholder="Search vendors…" value="' + esc(S.soaF || '') + '">' +
       '<select class="inp soa-sel" data-act="none" id="soasel"><option value="">— Select vendor —</option>' + r.vendors.map(function (v) { return '<option value="' + esc(v.key) + '"' + (v.key === q.sup ? ' selected' : '') + '>' + esc(v.short) + (v.out ? ' · ' + rmf(v.out) : '') + '</option>'; }).join('') + '</select>' +
       '<div class="soa-vs">' + list.map(function (v) {
@@ -994,13 +1010,13 @@
       '<div class="agebar">' + s.aging.map(function (a, i) { return a.v ? '<i class="' + agCols[i] + '" style="flex:' + a.v + '" title="' + esc(a.l) + '"></i>' : ''; }).join('') + (agTot ? '' : '<i class="g" style="flex:1"></i>') + '</div>' +
       '<div class="agegrid">' + s.aging.map(function (a, i) { return '<div><span class="dot ' + (agCols[i] === 'o' ? 'y' : agCols[i]) + '"></span><small>' + esc(a.l) + '</small><b>' + rmf(a.v) + '</b><em>' + a.n + ' invoices · ' + (agTot ? Math.round(a.v / agTot * 100) : 0) + '%</em></div>'; }).join('') + '</div>' +
       (s.openInv.length ? '<details' + (lateAmt ? ' open' : '') + '><summary class="note" style="cursor:pointer;margin-top:10px">Unpaid invoices (' + s.openInv.length + ')</summary><div class="tw" style="margin-top:8px"><table class="t"><thead><tr><th>Invoice no.</th><th>Branch</th><th>Date</th><th>Due date</th><th class="n">Days overdue</th><th class="n">Amount</th><th>Status</th></tr></thead><tbody>' +
-        s.openInv.map(function (x) { return '<tr><td>' + (/^https?:/.test(x.file || '') ? '<a href="' + esc(x.file) + '" target="_blank" rel="noopener">' + esc(x.inv || x.id) + '</a>' : esc(x.inv || x.id)) + '</td><td>' + esc(CAWN[x.caw] || x.caw) + '</td><td>' + dmy(x.d) + '</td><td>' + dmy(x.due) + '</td><td class="n">' + (x.late > 0 ? '<b style="color:#ff8b8b">' + x.late + '</b>' : '—') + '</td><td class="n">' + rmf(x.amt) + '</td><td>' + chip(en(x.st), x.st === 'Diluluskan' ? 'g' : 'w') + '</td></tr>'; }).join('') + '</tbody></table></div></details>' : '') + '</section>';
+        s.openInv.map(function (x) { return '<tr><td>' + (/^https?:/.test(x.file || '') ? '<a href="' + esc(x.file) + '" target="_blank" rel="noopener">' + esc(x.inv || x.id) + '</a>' : esc(x.inv || x.id)) + '</td><td>' + esc(CAWN[x.caw] || x.caw) + '</td><td>' + dmy(x.d) + '</td><td>' + dmy(x.due) + '</td><td class="n">' + (x.late > 0 ? '<b style="color:' + C.rt + '">' + x.late + '</b>' : '—') + '</td><td class="n">' + rmf(x.amt) + '</td><td>' + chip(en(x.st), x.st === 'Diluluskan' ? 'g' : 'w') + '</td></tr>'; }).join('') + '</tbody></table></div></details>' : '') + '</section>';
     var cawMax = s.byCaw.length ? s.byCaw[0].v : 1;
     var charts = '<section class="grid2"><div class="glass pad"><div class="sec-h"><h3>Purchases by month</h3></div>' + barChart(s.months.map(function (m) { return { l: m.m.slice(5) + '/' + m.m.slice(2, 4), v: m.v }; }), { a: 'Purchases (RM)', w: 560 }) + '</div>' +
       '<div class="glass pad"><div class="sec-h"><h3>Purchases by branch</h3></div>' + (s.byCaw.length ? hbars(s.byCaw.map(function (c) { return { l: CAWN[c.caw] || c.caw, v: s.spend ? c.v / s.spend * 100 : 0, sub: rmf(c.v), lamp: 'g' }; }), { max: 100 }) : '<div class="empty">No purchases in this period</div>') + '</div></section>';
     var items = '<section class="glass pad"><div class="sec-h"><div><h3>Items & pricing</h3><div class="note">From AP › Item Invois tab · ' + s.itemRows + ' rows</div></div></div>' + (s.items.length ?
       '<div class="tw"><table class="t"><thead><tr><th>Item</th><th>Unit</th><th class="n">Quantity</th><th class="n">Amount</th><th class="n">Average price</th><th class="n">Min – Max</th><th class="n">Latest</th><th class="n">Change</th></tr></thead><tbody>' +
-      s.items.map(function (o) { return '<tr><td><b>' + esc(o.item) + '</b><div class="muted" style="font-size:11px">' + o.n + ' purchases</div></td><td>' + esc(o.unit || '—') + '</td><td class="n">' + fnum(o.qty, o.qty % 1 ? 2 : 0) + '</td><td class="n">' + rmf(o.amt) + '</td><td class="n">' + (o.avg ? rmf(o.avg) : '—') + '</td><td class="n">' + (o.pmin !== null ? rmf(o.pmin) + ' – ' + rmf(o.pmax) : '—') + '</td><td class="n">' + (o.plast !== null ? rmf(o.plast) : '—') + '</td><td class="n">' + (o.chg === null ? '—' : '<b style="color:' + (o.chg > 0.5 ? '#ff8b8b' : o.chg < -0.5 ? '#2fe07a' : 'inherit') + '">' + (o.chg > 0 ? '+' : '') + o.chg.toFixed(1) + '%</b>') + '</td></tr>'; }).join('') + '</tbody></table></div>'
+      s.items.map(function (o) { return '<tr><td><b>' + esc(o.item) + '</b><div class="muted" style="font-size:11px">' + o.n + ' purchases</div></td><td>' + esc(o.unit || '—') + '</td><td class="n">' + fnum(o.qty, o.qty % 1 ? 2 : 0) + '</td><td class="n">' + rmf(o.amt) + '</td><td class="n">' + (o.avg ? rmf(o.avg) : '—') + '</td><td class="n">' + (o.pmin !== null ? rmf(o.pmin) + ' – ' + rmf(o.pmax) : '—') + '</td><td class="n">' + (o.plast !== null ? rmf(o.plast) : '—') + '</td><td class="n">' + (o.chg === null ? '—' : '<b style="color:' + (o.chg > 0.5 ? C.rt : o.chg < -0.5 ? C.g : 'inherit') + '">' + (o.chg > 0 ? '+' : '') + o.chg.toFixed(1) + '%</b>') + '</td></tr>'; }).join('') + '</tbody></table></div>'
       : '<div class="empty">No item details for this vendor yet. Record items, quantities and prices in the <b>Item Invois</b> tab (AP file) when invoices are entered — FIRAX will calculate volumes and price changes automatically.</div>') + '</section>';
     var tips = '<section class="glass pad soa-tips"><div class="sec-h"><h3>🎯 Supplier negotiation insights 2027</h3><span class="note">Generated from data, not assumptions</span></div>' + s.tips.map(function (t) { return '<div class="tip"><span class="dot ' + t[0] + '"></span><p>' + esc(t[1]) + '</p></div>'; }).join('') + '</section>';
     return head + tiles + tips + stmt + aging + charts + items;
