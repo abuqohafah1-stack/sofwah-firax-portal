@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>FIRAX Slip Relay</title>
+<style>
+:root{--bg:#f4f8f5;--ink:#10241a;--mut:#5d7366;--g:#11a35a;--r:#c8372d;--line:#d9e5dd}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0d1611;--ink:#e6f2ea;--mut:#8da597;--line:#22352a}}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:18px}
+h1{font-size:16px;margin:0 0 4px}p{margin:0 0 12px;color:var(--mut)}
+#log{border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:60px;font-size:12.5px}
+.ok{color:var(--g)}.err{color:var(--r)}
+</style>
+</head>
+<body>
+<h1>FIRAX · slip relay</h1>
+<p>Halaman ini dibuka oleh tugas WhatsApp "INV &amp; SP" untuk menyimpan slip bayaran ke FIRAX. Ia tertutup sendiri selepas selesai.</p>
+<div id="log">Menunggu slip…</div>
+<script>
+(function () {
+  var EXEC = 'https://script.google.com/macros/s/AKfycbz1zbFTlF6khEUuwpDoZNmBCJ5M8XgQ4clXRf9OnjyUbUhzB4VKiNVSJXJ4KrETOxCeyw/exec';
+  var FROM = 'https://web.whatsapp.com', log = document.getElementById('log'), first = true;
+  function line(t, c) { if (first) { log.textContent = ''; first = false; } var d = document.createElement('div'); d.className = c || ''; d.textContent = t; log.appendChild(d); }
+  function b64(buf) { var u = new Uint8Array(buf), s = ''; for (var i = 0; i < u.length; i += 8192) s += String.fromCharCode.apply(null, u.subarray(i, i + 8192)); return btoa(s); }
+  window.addEventListener('message', function (e) {
+    if (e.origin !== FROM || !e.data || e.data.t !== 'fxslip') return;
+    var m = e.data, src = e.source;
+    line('Menghantar: ' + (m.sup || '') + ' · ' + (m.rows || []).length + ' invois…');
+    var body = { key: m.key, op: 'attach', sup: m.sup, rows: m.rows, ref: m.ref || '', mime: m.mime, name: m.name, b64: b64(m.buf) };
+    fetch(EXEC, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) })
+      .then(function (r) { return r.json(); })
+      .then(function (r) { line((r.ok ? '✓ ' : '✗ ') + (m.sup || '') + ': ' + (r.ok ? r.data.name : r.error), r.ok ? 'ok' : 'err'); src.postMessage({ t: 'fxslip-done', id: m.id, ok: !!r.ok, data: r.data || null, error: r.error || '' }, FROM); })
+      .catch(function (x) { line('✗ ' + (m.sup || '') + ': ' + x, 'err'); src.postMessage({ t: 'fxslip-done', id: m.id, ok: false, error: String(x) }, FROM); });
+  });
+  if (window.opener) window.opener.postMessage({ t: 'fxslip-ready' }, FROM);
+})();
+</script>
+</body>
+</html>
