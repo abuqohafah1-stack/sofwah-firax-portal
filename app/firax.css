@@ -545,3 +545,12 @@ td.small{font-size:11.5px;color:var(--ink2);max-width:360px}
 @media print{.rc-side,.rc-why,.rc-nav,.rc-todo{display:none!important}.rc-grid{display:block}}
 @media (max-width:760px){.rc-chk.glass.pad{padding:16px 14px}table.t.rc-t th,table.t.rc-t td{padding:8px 4px;font-size:11px}table.t.rc-t th:first-child,table.t.rc-t td:first-child{padding-left:10px}table.t.rc-t td.ck{width:16px;padding-right:8px}.rc-tot th:nth-child(5),.rc-tot td:nth-child(5){display:none}}
 @media (max-width:900px){.top .thm span{display:none}.top .thm{padding:8px 10px}}
+.pk-h .btn{white-space:nowrap;flex:none}
+.pk-h{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--ink2);margin:0 0 6px}
+.pk{display:flex;flex-direction:column;gap:6px;max-height:42vh;overflow:auto;margin-bottom:14px;padding-right:2px}
+.pki{display:grid;grid-template-columns:22px 1fr auto;gap:10px;align-items:center;padding:9px 11px;border:1px solid var(--line2);border-radius:10px;cursor:pointer;user-select:none;transition:background .12s,border-color .12s;opacity:.55}
+.pki small{display:block;font-size:11px;color:var(--mut);margin-top:1px}.pki small em.r{font-style:normal;color:var(--rt);font-weight:700}
+.pki .n{font-weight:700;font-variant-numeric:tabular-nums}
+.pki .pkb{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--line2);display:grid;place-items:center;font-size:13px;font-weight:800;color:transparent}
+.pki.on{opacity:1;border-color:rgba(var(--ga),.55);background:rgba(var(--ga),.07)}
+.pki.on .pkb{background:var(--g);border-color:var(--g);color:#fff}
